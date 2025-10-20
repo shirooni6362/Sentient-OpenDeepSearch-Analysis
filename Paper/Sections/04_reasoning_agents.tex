@@ -1,0 +1,211 @@
+\section{Open Reasoning Agent: Framework Implementation and Execution}
+
+The Open Reasoning Agent constitutes the decision-making component of Open Deep Search, responsible for orchestrating information gathering, synthesizing retrieved knowledge, and formulating comprehensive responses to user queries. This section examines the two distinct agent implementations provided by the framework, documenting their architectural foundations, execution patterns, and performance characteristics. The dual-framework approach reflects empirical findings that different reasoning paradigms offer distinct advantages across varying query types and complexity levels.
+
+\subsection{Foundations of Agentic Reasoning}
+
+The concept of agentic reasoning in large language models represents a significant evolution beyond simple prompt-response interactions. Traditional language model usage involves submitting a prompt containing a query and relevant context, receiving a single generated response, and accepting that response as final output. This pattern proves adequate for queries answerable from information available in the prompt but fails when queries require accessing external information, performing computations beyond language model capabilities, or iteratively refining understanding through progressive information gathering.
+
+Agentic frameworks address these limitations by enabling language models to take actions in their environment rather than merely generating text. These actions include invoking external tools like search engines, calculators, or databases, observing the results of those actions, and using observations to inform subsequent reasoning steps. The agent operates in a loop where it reasons about what information or computation it needs, takes actions to acquire that information, observes results, and continues this cycle until it can formulate a complete answer.
+
+The theoretical foundation for agentic reasoning builds on several complementary research directions. Tool augmentation research demonstrates that language models can learn to invoke external capabilities through natural language specifications or programmatic interfaces, dramatically expanding their effective capabilities beyond pure text generation. Reasoning decomposition work shows that complex problems can be broken into simpler subproblems that are solved sequentially, with solutions to subproblems informing how subsequent steps proceed. Interactive learning research establishes that models benefit from intermediate feedback during problem-solving rather than attempting to solve problems in single forward passes.
+
+Open Deep Search implements agentic reasoning through two distinct frameworks that embody different approaches to structuring the reasoning process. The ReAct framework uses structured natural language to alternate between explicit reasoning traces and concrete actions, maintaining interpretability while enabling sophisticated multi-step problem solving. The CodeAct framework generates executable Python code that programmatically orchestrates tool usage and information processing, trading some interpretability for enhanced compositional capabilities and flexible control flow. Both frameworks share the fundamental characteristic of enabling iterative refinement where the agent progressively builds understanding through interaction with its environment.
+
+\subsection{Chain-of-Thought and Self-Consistency Foundations}
+
+Before examining the specific agent implementations, understanding their foundational techniques provides essential context. Both ODS-v1 and ODS-v2 build upon Chain-of-Thought prompting and its extensions, which have proven essential for eliciting reasoning capabilities from language models.
+
+The self-consistency mechanism can be formally described as follows. The system generates $m$ independent reasoning traces:
+
+\begin{equation}
+\{r_1, r_2, \ldots, r_m\}
+\label{eq:reasoning_traces}
+\end{equation}
+
+Each trace produces a candidate answer $a_i = f(r_i, \text{context})$. The final answer is selected through confidence-weighted majority voting:
+
+\begin{equation}
+a^* = \argmax_{a} \sum_{i=1}^{m} \mathbb{1}(a_i = a) \cdot \text{conf}(r_i)
+\label{eq:majority_voting}
+\end{equation}
+
+where $\mathbb{1}(\cdot)$ is the indicator function and the confidence score for reasoning path $r_i$ is computed as:
+
+\begin{equation}
+\text{conf}(r_i) = -\sum_{j} P(\text{token}_j | \text{prefix}) \log P(\text{token}_j | \text{prefix})
+\label{eq:confidence}
+\end{equation}
+
+This entropy-based measure quantifies the model's certainty in generating each reasoning step, with lower entropy indicating higher confidence.
+
+
+Chain-of-Thought prompting addresses a fundamental limitation observed in early language model applications. When presented with complex reasoning tasks, models often produced incorrect answers by attempting to leap directly from problem statement to solution without explicitly working through intermediate reasoning steps. Chain-of-Thought prompting mitigates this through explicit instruction to generate step-by-step reasoning before producing final answers. The simple addition of phrases like "Let's think step by step" to prompts substantially improves performance on mathematical reasoning, logical inference, and commonsense reasoning tasks.
+
+The technique operates in two primary modes reflecting different amounts of guidance provided. Zero-shot Chain-of-Thought simply appends reasoning instructions to the query without providing examples, relying on the language model's training to produce appropriate reasoning traces. This approach offers simplicity and generality but depends heavily on model capabilities. Few-shot Chain-of-Thought includes several example problems with complete reasoning traces demonstrating the desired pattern, enabling in-context learning where the model adapts its behavior based on observed examples. This approach provides stronger guidance but requires careful example selection and increases prompt length.
+
+Chain-of-Thought Self-Consistency extends the basic approach by generating multiple independent reasoning traces for the same query, each potentially following different reasoning paths to reach conclusions. The system compares the various answers produced, identifies clusters of similar responses, and selects a final answer from the largest cluster based on majority voting. This ensemble approach improves robustness by reducing sensitivity to particular reasoning paths that may lead astray. Self-consistency proves particularly valuable for queries with multiple valid solution strategies where different approaches should converge on the same answer if reasoning correctly.
+
+Open Deep Search incorporates Chain-of-Thought principles throughout both agent implementations. The ReAct framework explicitly structures reasoning as thought traces that precede actions, embodying Chain-of-Thought directly in the agent loop. The CodeAct framework generates code that often includes comments explaining reasoning, providing a programmatic form of reasoning documentation. Both implementations can fall back to Chain-of-Thought Self-Consistency when primary reasoning approaches fail to produce satisfactory results, providing robustness through ensemble reasoning.
+
+\subsection{ODS-v1: ReAct Agent Implementation}
+
+The ReAct agent framework implements a structured loop alternating between reasoning and action, making the agent's decision-making process explicit and interpretable. This section provides detailed examination of the ReAct implementation in Open Deep Search, documenting its architecture, execution flow, and distinctive characteristics.
+
+The core ReAct loop operates through four distinct phases that repeat until the agent determines it has sufficient information to answer the query. The thought phase begins each iteration where the agent generates a reasoning trace articulating its current understanding of the query, what information has been gathered so far, what gaps remain in its knowledge, and what action would help fill those gaps. This thought appears as natural language text that makes reasoning explicit. The action phase follows where the agent specifies a concrete action to take from the available tool set. Actions use a structured format identifying the tool to invoke and providing necessary parameters. The action input phase supplies the specific parameters for the chosen action, such as the search query text for web search or the mathematical expression for calculation. The observation phase captures the result of executing the action, which becomes available to the agent in the next thought phase.
+
+Consider a concrete execution trace for the query "What is the distance in millimeters between two specific points mentioned in a historical document?" The agent might begin with a thought articulating "I need to first find information about these historical points to determine the distance between them." This thought leads to an action specifying use of the search tool with input containing the query about the historical points. The observation returns search results describing the points and mentioning a distance of 112 inches. The next thought might reason "I found the distance is 112 inches, but the question asks for millimeters, so I need to convert units." This leads to an action invoking the calculator tool with input specifying the conversion calculation. The observation returns 2,845 millimeters. The final thought concludes "I now have the answer in the requested units" and produces the done action with the answer.
+
+The ReAct agent has access to three primary tools that enable different capabilities. The search tool implements the Open Search Tool described in the previous section, accepting natural language queries and returning structured context from web search. This tool serves as the primary mechanism for gathering factual information, current events, and domain knowledge not contained in the language model's training data. The calculator tool integrates with the Wolfram Alpha computational knowledge engine, accepting mathematical expressions and returning evaluated results. This tool addresses a known limitation of language models where arithmetic and symbolic computation often produce errors, delegating such operations to specialized computational infrastructure. The continue thinking tool enables recursive reasoning where the agent can invoke additional reasoning cycles to decompose complex problems into subproblems. This tool proves valuable for queries requiring extended chains of inference beyond what fits comfortably in a single thought.
+
+The dynamic few-shot learning mechanism represents a sophisticated enhancement to basic ReAct operation. Rather than using fixed examples for all queries, the system maintains a repository of 200 community-designed ReAct examples covering diverse reasoning patterns and query types. These examples were crowdsourced from community members who applied their intuition to crafting effective reasoning traces for sample queries. Each example demonstrates a complete ReAct execution trace including thoughts, actions, and observations for a particular query.
+
+When processing a new query, the system performs vector similarity matching between the query and all examples in the repository. This retrieval operation uses embeddings to identify examples most semantically similar to the current query, selecting the top matches based on cosine similarity in embedding space. The selected examples are included in the prompt provided to the language model, enabling in-context learning where the model adapts its reasoning approach based on patterns demonstrated in relevant examples. This dynamic selection ensures that examples remain relevant to each specific query rather than using generic examples that may not match the reasoning patterns required.
+
+The community-contributed examples span diverse reasoning patterns reflecting the variety of approaches humans employ when solving different types of problems. Mathematical examples demonstrate systematic calculation with intermediate verification steps. Historical comparison examples show how to gather information about multiple entities and compare their properties. Factual lookup examples illustrate efficient search strategies for straightforward information needs. Multi-step reasoning examples demonstrate decomposition of complex queries into manageable subproblems. This diversity enables the dynamic selection mechanism to find appropriate guidance for most query types.
+
+The ReAct implementation includes sophisticated error handling and fallback mechanisms that improve robustness. When the agent completes its reasoning loop, a lightweight judge model evaluates whether the produced answer appears satisfactory based on criteria like completeness, factual consistency with retrieved information, and appropriate response to the query. If the judge determines the answer is unsatisfactory, the system activates a fallback mechanism employing Chain-of-Thought Self-Consistency. This fallback generates multiple independent reasoning attempts, clusters similar responses, and returns a random selection from the largest cluster. This ensemble approach often succeeds when single reasoning traces fail.
+
+The structured format of ReAct traces provides significant advantages for interpretability and debugging. Developers can inspect complete thought-action-observation sequences to understand exactly how the agent approached a query, where reasoning went astray when failures occur, and what information the agent considered at each decision point. This transparency proves valuable for system development, user trust building, and identifying systematic failure patterns that suggest opportunities for improvement. The explicit reasoning traces also facilitate error analysis where researchers can examine failure cases to understand limitations and develop enhancements.
+
+The ReAct implementation exhibits particular strengths and weaknesses that inform appropriate use cases. The framework excels at queries requiring systematic information gathering where the reasoning steps follow logical progressions. The explicit structure helps guide the language model toward productive reasoning patterns, particularly valuable when working with models that have not been extensively trained on tool usage. The interpretable traces build user trust by showing the work rather than producing unexplained answers. However, the structured format can feel constraining for complex queries requiring sophisticated control flow like conditional logic or iteration over collections. The natural language action specification adds overhead compared to direct programmatic tool invocation.
+
+\subsection{ODS-v2: CodeAct Agent Implementation}
+
+The CodeAct agent framework takes a fundamentally different approach to reasoning by generating executable Python code that orchestrates tool usage and information processing. This paradigm shift from natural language actions to programmatic control provides enhanced flexibility and compositional capabilities that prove particularly valuable for complex multi-hop reasoning tasks.
+
+The theoretical foundation for CodeAct rests on observations about how programming languages naturally express certain types of reasoning that prove awkward in natural language. Code provides native support for composition where outputs from one operation feed as inputs to another through variable assignment and function calls. Control flow constructs like conditionals and loops enable expressing iterative or conditional reasoning patterns. Data structures like lists and dictionaries facilitate accumulation and organization of information gathered across multiple steps. Error handling through exceptions provides robust failure management. The expressiveness of code as a reasoning medium enables more sophisticated problem-solving strategies than the structured natural language format of ReAct.
+
+The CodeAct execution flow differs substantially from ReAct's structured phases. When presented with a query, the agent analyzes what steps are necessary to answer it and generates a complete Python program that implements those steps. This code generation happens in a single inference call rather than the iterative loop of ReAct. The generated program may include multiple tool invocations, intermediate computations, conditional logic, and result synthesis. After generation, the code executes in a controlled environment that provides access to registered tools through Python functions. The execution proceeds until completion or error, producing results that become the agent's answer.
+
+Consider how CodeAct approaches the same millimeter conversion query examined earlier. The agent might generate code resembling the following structure. First, it invokes the search tool to find distance information and stores the result in a variable. Then it parses the result to extract the numeric value and units. The code checks whether conversion is needed based on the original units. If conversion is required, it invokes the calculator tool with the appropriate conversion formula. Finally, it formats and returns the answer in requested units. This entire logic appears as a cohesive program rather than an iterative sequence of discrete steps.
+
+The CodeAct implementation integrates with the SmolAgents framework developed by HuggingFace, which provides infrastructure for code-generating agents. SmolAgents handles the complexities of safe code execution including sandboxing to prevent harmful operations, timeout management to handle infinite loops, and error capture to gracefully handle execution failures. The framework exposes tools as Python functions that the generated code can invoke directly, making tool usage feel natural within the programming context. The integration with SmolAgents provides production-ready components that have been tested across diverse agent applications.
+
+The tool integration pattern in CodeAct differs from the structured action specification of ReAct. Each tool appears as a callable Python function with a clear signature specifying required parameters and return types. The Open Search Tool becomes a function accepting query strings and returning structured results. The calculator tool becomes a function accepting mathematical expressions. Generated code invokes these functions using natural Python syntax, assigns results to variables, and processes results using standard Python operations. This programmatic interface eliminates ambiguity about tool parameters and return values, reducing errors from misformatted action specifications.
+
+The adaptive search strategy enabled by CodeAct represents a significant advantage for complex queries. Rather than following a predetermined pattern of search iterations, the generated code can implement sophisticated logic determining when additional searches are necessary. The code might search for initial information, examine results to identify gaps, generate follow-up queries targeting those gaps, and continue this process conditionally based on information gathered. Empirical data demonstrates this adaptivity where CodeAct averages 1.45 searches per query on SimpleQA but 3.39 searches per query on FRAMES. This variation reflects the agent's ability to recognize when queries require deeper investigation versus when initial results suffice.
+
+The compositional advantages of code become particularly evident in complex multi-hop scenarios. Consider a query requiring information about person A who founded company B that acquired startup C where person D worked. CodeAct can generate code that performs the first search and extracts person A from results, uses person A to construct the second query about their company, extracts company B from those results, constructs the third query about acquisitions by company B, extracts startup C from results, constructs the fourth query about employees of startup C, extracts person D from results, and finally searches for information about person D. This entire chain appears as a cohesive program with clear data flow between steps.
+
+The CodeAct implementation provides sophisticated error handling that improves robustness compared to basic code generation approaches. Generated code often includes try-except blocks that handle potential failures in tool invocations, retry logic that attempts alternative approaches when initial strategies fail, validation checks that verify intermediate results appear reasonable before proceeding, and fallback strategies that provide partial answers when complete information cannot be gathered. This defensive programming style reduces failures from transient errors or edge cases.
+
+The performance characteristics of CodeAct reveal its strengths and limitations across different query types. On SimpleQA comprising relatively straightforward factual queries, CodeAct achieves 88.3 percent accuracy compared to 87.7 percent for ReAct when both use DeepSeek-R1 as the base model. This modest difference reflects that both approaches handle simple queries adequately. However, on FRAMES testing complex multi-hop reasoning, CodeAct achieves 75.3 percent accuracy compared to 56.7 percent for ReAct, an 18.6 percentage point improvement. This substantial gap demonstrates that the enhanced compositional capabilities and flexible control flow of code provide significant advantages for complex reasoning tasks.
+
+The interpretability trade-off represents the primary disadvantage of CodeAct relative to ReAct. While generated code can be read to understand the agent's approach, the logic may be less immediately transparent than explicit thought traces. Code requires programming literacy to interpret, potentially limiting accessibility for non-technical users. The lack of explicit reasoning traces makes it harder to understand why particular approaches were chosen. However, this interpretability gap can be partially addressed through code comments that explain reasoning, clear variable names that document intermediate computations, and logging that tracks execution flow.
+
+The CodeAct implementation exhibits particular strengths for queries requiring sophisticated information orchestration. Multi-step problems where information from early steps informs later queries benefit from the clear data flow expressed in code. Queries requiring iteration over collections or conditional logic map naturally to programming constructs. Problems involving numerical computation or data manipulation leverage Python's extensive standard library. Complex synthesis tasks where information from multiple sources must be combined and analyzed are expressed clearly as programs. These characteristics make CodeAct the preferred choice for research-oriented applications and complex information-seeking tasks.
+
+\subsection{Tool Suite and Extension Mechanisms}
+
+Both agent frameworks operate with a common set of tools that provide access to capabilities beyond pure language model reasoning. The tool architecture implements a clean abstraction where tools expose consistent interfaces regardless of the underlying implementation complexity. This section examines the provided tools and mechanisms for extending the tool suite.
+
+The Open Search Tool integrates the complete search pipeline described in the previous section as a single tool from the agent's perspective. The tool accepts a natural language query as input and returns structured context containing relevant information from web search. The agent need not understand the internal complexity of query rephrasing, retrieval, and augmentation. Instead, it simply invokes the search tool when it needs information and receives rich context in return. The abstraction shields reasoning logic from search implementation details while enabling the search pipeline to evolve independently.
+
+The Wolfram Alpha integration provides computational capabilities that complement the information retrieval focus of search. Language models notoriously struggle with precise numerical computation, often producing plausible but incorrect results for arithmetic operations. The Wolfram Alpha tool delegates such computations to dedicated infrastructure designed for symbolic and numerical calculation. The tool accepts mathematical expressions, physical unit conversions, and symbolic algebra problems, returning evaluated results. This delegation ensures accuracy for computational tasks while freeing the language model to focus on reasoning about when computation is needed rather than performing calculations directly.
+
+The continue thinking tool implements a somewhat abstract capability enabling recursive reasoning. When the agent encounters a problem that feels too complex to address in a single reasoning step, it can invoke this tool to spawn additional reasoning cycles focused on subproblems. The tool essentially provides a mechanism for the agent to call itself recursively with refined or decomposed queries. This capability proves valuable for queries requiring extended chains of inference that exceed what comfortably fits in a single thought or code block.
+
+The tool interface follows a simple contract that new tools must implement to integrate with the agent frameworks. Each tool provides a name that agents use to refer to it, a description explaining what the tool does and when to use it, a specification of required input parameters including their types and meanings, and an implementation that accepts input and returns results. This minimal interface enables integration of diverse capabilities without requiring changes to agent code.
+
+Extending the tool suite enables customization for domain-specific applications. A medical deployment might add tools for querying PubMed medical literature, accessing clinical trial databases, and looking up drug interactions. A legal deployment could integrate case law search, statute lookup, and legal citation verification. A financial application might include tools for retrieving stock prices, accessing SEC filings, and performing financial calculations. A code-focused system could add tools for searching GitHub, executing code snippets, and analyzing program behavior. The agent frameworks treat all tools uniformly, invoking them when relevant to query resolution.
+
+The implementation includes several refinements that improve practical tool usage. Tool documentation is provided to the language model through rich descriptions that explain not just what tools do but when they are most appropriate to use. This guidance helps the model make good decisions about tool selection. Error messages from failed tool invocations provide actionable information about what went wrong and how to potentially retry with corrected parameters. This feedback enables recovery from transient failures or minor parameter errors. Usage examples demonstrate correct tool invocation patterns through few-shot examples, reducing errors from incorrectly formatted requests.
+
+Certain design principles guide tool development for optimal integration with the agent frameworks. Tools should maintain single clear responsibilities rather than combining multiple orthogonal capabilities, enabling agents to compose simple tools for complex tasks rather than needing specialized tools for every scenario. Tools should fail gracefully with informative error messages rather than raising exceptions that halt agent execution, allowing agents to attempt alternative approaches when specific tools fail. Tools should return structured results when possible rather than unstructured text, facilitating programmatic processing by agents. Tools should be stateless without dependencies on invocation order, enabling agents to use tools in any sequence dictated by query requirements.
+
+\subsection{Execution Patterns and Query Resolution Strategies}
+
+The actual behavior of reasoning agents during query resolution reveals patterns that emerge from the interaction between language model capabilities, tool availability, and query characteristics. Understanding these execution patterns provides insight into agent strengths, limitations, and appropriate use cases.
+
+Simple factual queries follow straightforward execution patterns in both frameworks. The agent recognizes that the query requires external information, invokes the search tool with an appropriate query, receives results containing the answer, and formulates a response citing the source. The entire process typically completes in a single search operation with minimal reasoning overhead. This pattern dominates for queries about current events, factual lookups, and simple question answering where the answer appears explicitly in search results.
+
+Multi-hop queries require more sophisticated execution patterns where the agent must decompose the problem into sequential steps. The agent performs an initial search to gather partial information, analyzes results to understand what additional information is needed, formulates a follow-up query targeting that information, performs additional searches until sufficient information is available, and finally synthesizes information from multiple searches into a comprehensive answer. The number of search iterations scales with query complexity, from two hops for moderately complex queries to four or more for challenging information synthesis tasks.
+
+The adaptive search strategy implemented particularly in CodeAct enables query appropriate resource allocation. The agent adjusts its search depth based on how much information is required, performs minimal searches for simple queries while investing in thorough investigation for complex queries, and terminates search when confident it has sufficient information rather than executing predetermined numbers of searches. This adaptation improves efficiency by avoiding unnecessary computation for simple queries while ensuring thorough coverage for complex tasks.
+
+Verification and cross-checking patterns emerge when agents encounter conflicting information or want to confirm critical facts. The agent might perform multiple searches with differently phrased queries to verify that independent sources agree, compare information from different sources to identify discrepancies, and invoke computational tools to verify numerical claims appearing in search results. These verification behaviors improve answer reliability at the cost of additional computational overhead.
+
+Recovery patterns handle situations where initial approaches fail to produce satisfactory results. When a search returns no relevant results, the agent might rephrase the query with different terminology or break it into smaller subquestions. When retrieved information appears incomplete, the agent might perform targeted follow-up searches focusing on identified gaps. When answers conflict across sources, the agent might search for authoritative sources or additional context to resolve ambiguity. These recovery behaviors demonstrate robustness beyond simple successful execution paths.
+
+The execution patterns differ somewhat between ReAct and CodeAct frameworks due to their structural differences. ReAct tends toward more iterative exploration where each search informs the next thought, creating chains of reasoning visible in the execution trace. CodeAct tends toward more planned execution where the generated program anticipates multiple steps ahead, implementing complete solution strategies as cohesive programs. Neither approach is universally superior, with the appropriate choice depending on query characteristics and interpretability requirements.
+
+Certain failure patterns recur across different agent configurations and deserve attention. Premature termination occurs when agents conclude they have sufficient information after initial searches despite gaps remaining. This pattern appears more frequently on complex multi-hop queries where agents underestimate the depth of investigation required. Search query formulation failures arise when agents generate queries that fail to retrieve relevant information due to poor keyword selection or inappropriate specificity. Information synthesis failures occur when agents struggle to combine information from multiple sources into coherent answers, particularly when sources use inconsistent terminology or provide conflicting data.
+
+Understanding these execution and failure patterns informs several practical considerations for deployment. Query classification can route simple queries to faster agent configurations while directing complex queries to more thorough approaches. Confidence scoring can identify when agents might benefit from additional verification or search iterations. Failure detection can trigger fallback mechanisms or human escalation when agents appear to struggle. Performance monitoring can track execution patterns to identify systematic issues suggesting opportunities for improvement.
+
+\subsection{Performance Analysis and Comparative Evaluation}
+
+Rigorous performance analysis reveals how agent framework choice affects outcomes across different query types and complexity levels. This section synthesizes empirical findings from benchmark evaluation and identifies factors driving performance differences.
+
+The SimpleQA benchmark results demonstrate relatively modest differences between agent frameworks when addressing straightforward factual queries. Using Llama 3.1 70B as the base model, ODS-v1 achieves 83.4 percent accuracy while ODS-v2 achieves slightly higher performance. Upgrading to DeepSeek-R1 improves both frameworks with ODS-v1 reaching 87.7 percent and ODS-v2 reaching 88.3 percent. The similarity in performance reflects that both frameworks handle simple single-hop queries adequately. The structured ReAct format provides sufficient expressiveness for queries requiring a search followed by direct answer extraction. The code generation of CodeAct offers minimal advantage when control flow remains simple.
+
+The FRAMES benchmark results reveal dramatic performance divergence on complex multi-hop queries. Using DeepSeek-R1, ODS-v1 achieves 56.7 percent accuracy while ODS-v2 reaches 75.3 percent, an 18.6 percentage point improvement. This substantial gap demonstrates that framework choice significantly impacts performance on challenging reasoning tasks. The enhanced compositional capabilities of code enable more sophisticated search orchestration where information from earlier searches directly informs construction of later queries. The flexible control flow supports conditional logic and iteration patterns that prove awkward in structured natural language actions.
+
+The search frequency patterns provide insight into how different frameworks approach problem solving. On SimpleQA, both frameworks average close to one search per query regardless of base model, reflecting that simple queries typically require only single information lookups. On FRAMES, ODS-v1 maintains approximately one search per query even for complex questions, suggesting it struggles to recognize when additional investigation is needed. ODS-v2 averages 3.39 searches per query on FRAMES, demonstrating adaptive behavior where it recognizes query complexity and performs additional searches accordingly. This adaptivity appears to be a key factor in the superior FRAMES performance.
+
+The impact of base model quality affects both frameworks but in somewhat different ways. Upgrading from Llama 3.1 70B to DeepSeek-R1 improves ODS-v1 by 4.3 percentage points on SimpleQA and 7.2 percentage points on FRAMES. The same upgrade improves ODS-v2 by similar margins. This pattern suggests that both frameworks successfully leverage improvements in base model capabilities. Better models produce more accurate reasoning traces and generate more effective code, translating to improved overall system performance. The plug-and-play architecture ensures that advances in language models benefit Open Deep Search automatically without requiring system modifications.
+
+Certain query characteristics particularly favor one framework over the other. Queries requiring systematic information gathering with clear sequential steps suit ReAct's explicit structure that guides step-by-step progress. Queries involving numerical computation benefit from both frameworks' calculator integration but CodeAct handles more complex computational flows naturally through programming constructs. Queries requiring conditional logic based on intermediate results strongly favor CodeAct where if-else structures express logic clearly. Queries where interpretability is paramount favor ReAct with its explicit reasoning traces. Queries prioritizing maximum accuracy on complex tasks favor CodeAct despite reduced interpretability.
+
+The failure mode analysis reveals that different frameworks encounter different types of errors. ReAct failures often involve insufficient search depth where the agent terminates after one or two searches despite needing additional information. The structured format may constrain the agent's ability to recognize when substantial additional investigation is warranted. CodeAct failures more often involve code execution errors or logic bugs in generated programs. While less frequent than ReAct's premature termination, CodeAct failures can be more severe when generated code contains fundamental logic errors that produce completely incorrect answers.
+
+The performance analysis suggests several implications for practical deployment. Applications prioritizing interpretability and transparency should favor ReAct despite its performance limitations on complex queries. The explicit reasoning traces prove valuable for building user trust and enabling system debugging. Research applications and complex information synthesis tasks should favor CodeAct to maximize performance on challenging multi-hop reasoning. The 18.6 percentage point advantage on FRAMES justifies accepting reduced interpretability when accuracy is paramount. Interactive systems might implement adaptive framework selection where simple queries use ReAct for interpretability while complex queries automatically switch to CodeAct for enhanced performance.
+
+The comparative evaluation establishes that no universal best framework exists across all use cases. The provision of both ReAct and CodeAct implementations enables users to select appropriate tools for their specific requirements rather than accepting compromises inherent in any single approach. This flexibility represents a key strength of Open Deep Search architecture that acknowledges the diversity of deployment contexts and user priorities.
+
+\begin{table}[htbp]
+\centering
+\caption{Comparative Analysis: ReAct (ODS-v1) vs CodeAct (ODS-v2) Agent Frameworks}
+\label{tab:react_vs_codeact}
+\resizebox{\textwidth}{!}{%
+\begin{tabular}{lcc}
+\hline
+\textbf{Characteristic} & \textbf{ReAct (ODS-v1)} & \textbf{CodeAct (ODS-v2)} \\
+\hline
+\multicolumn{3}{l}{\textit{Performance Metrics (DeepSeek-R1)}} \\
+SimpleQA Accuracy & 87.7\% & 88.3\% \\
+FRAMES Accuracy & 56.7\% & 75.3\% \\
+FRAMES Improvement & -- & +18.6 pp \\
+Avg. Searches (SimpleQA) & 1.08 & 1.02 \\
+Avg. Searches (FRAMES) & 1.08 & 3.39 \\
+Adaptive Search Behavior & Limited & Strong \\
+\hline
+\multicolumn{3}{l}{\textit{Architectural Properties}} \\
+Reasoning Format & Natural Language & Python Code \\
+Action Specification & Structured Text & Function Calls \\
+Control Flow & Sequential Phases & Programming Constructs \\
+State Management & Implicit & Variables / Objects \\
+Composition Support & Moderate & Excellent \\
+Error Handling & Basic & Advanced (try–except) \\
+\hline
+\multicolumn{3}{l}{\textit{Interpretability}} \\
+Reasoning Transparency & Excellent & Good \\
+Debugging Ease & High & Moderate \\
+User Trust Building & Strong & Moderate \\
+Example Base & 200 community & Standard library \\
+Technical Barrier & Low & Medium \\
+\hline
+\multicolumn{3}{l}{\textit{Use Case Suitability}} \\
+Simple Factual Queries & Excellent & Excellent \\
+Multi-Hop Reasoning & Good & Excellent \\
+Complex Synthesis & Moderate & Excellent \\
+Numerical Computation & Good & Excellent \\
+Iterative Refinement & Moderate & Excellent \\
+Interactive Applications & Preferred & Acceptable \\
+Research Applications & Acceptable & Preferred \\
+\hline
+\multicolumn{3}{l}{\textit{Development \& Maintenance}} \\
+Implementation Complexity & Moderate & High \\
+Prompt Engineering Need & High & Moderate \\
+Community Examples & Extensive & Standard \\
+Failure Mode Analysis & Easier & Harder \\
+Extension Development & Straightforward & Requires coding \\
+\hline
+\end{tabular}%
+}
+\begin{tablenotes}
+\small
+\item Note: Performance metrics use DeepSeek-R1 base model. “pp” denotes percentage points. Suitability ratings follow hierarchy: Excellent $>$ Good $>$ Moderate $>$ Acceptable. Both frameworks support identical tool suites and model integrations.
+\end{tablenotes}
+\end{table}
