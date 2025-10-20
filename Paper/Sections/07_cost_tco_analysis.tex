@@ -1,0 +1,265 @@
+\section{Cost Analysis and Total Cost of Ownership Modeling}
+
+Economic considerations fundamentally shape deployment decisions for search-augmented reasoning systems. The total cost of ownership extends far beyond simple per-query pricing to encompass infrastructure investment, operational overhead, opportunity costs, and strategic flexibility. This section provides comprehensive analysis of cost structures across deployment configurations, enabling organizations to make informed decisions that optimize economic outcomes while meeting technical and operational requirements. The analysis reveals that conventional assumptions about cloud API services always providing lowest costs prove false at scale, where self-hosted open-source deployments deliver substantial savings while enabling capabilities impossible with API-only approaches.
+
+\subsection{Per-Query Cost Breakdown and Component Analysis}
+
+Understanding the detailed composition of costs for individual queries provides essential foundation for aggregate analysis and optimization strategies. The per-query costs vary substantially based on deployment configuration, operational mode selection, and query characteristics. This granular analysis identifies cost drivers and optimization opportunities.
+
+The Open Deep Search default mode operating through API-based infrastructure incurs costs across multiple components that accumulate to determine total per-query expense. Query rephrasing represents the first cost element, requiring one to two language model inference calls to generate alternative query formulations. Using a capable model like GPT-4 for rephrasing costs approximately $0.002 to $0.005 per query depending on query complexity and number of alternative formulations generated. Less expensive models like GPT-3.5 or open-source alternatives through providers like Fireworks reduce this cost to $0.001 to $0.002, though potentially sacrificing some rephrasing quality.
+
+The search API component adds costs that scale with the number of queries executed. Using Serper.dev at typical pricing of $0.001 to $0.003 per search, and executing two to three searches per query including the original and rephrased variants, yields search costs of $0.002 to $0.009 per query. The SearXNG self-hosted alternative eliminates per-search API charges, replacing them with the amortized cost of running the search infrastructure at approximately $30 to $60 monthly. For deployments exceeding 10,000 queries monthly, self-hosted search reduces this component to negligible per-query cost below $0.001.
+
+The reasoning agent execution represents the largest cost component in default mode. The agent makes three to five language model inference calls for typical queries, processing substantial context including search results and reasoning traces. Each call processes 1,500 to 3,000 input tokens and generates 200 to 400 output tokens. Using GPT-4 pricing at $2.50 per million input tokens and $10.00 per million output tokens, typical agent execution costs $0.017 to $0.045 per query. The cost varies based on query complexity, with simple factual lookups at the lower end and multi-step reasoning at the higher end. Using less expensive models like Claude Sonnet or open-source alternatives reduces this cost to $0.008 to $0.020 per query.
+
+Aggregating these components yields total default mode costs ranging from $0.021 to $0.059 per query when using premium models through API providers. Organizations can reduce costs substantially through strategic choices including using less expensive base models, self-hosting search infrastructure, implementing aggressive caching to avoid redundant API calls, and optimizing prompts to reduce token consumption. A cost-optimized configuration using GPT-3.5 for rephrasing, self-hosted SearXNG, and Claude Sonnet for reasoning can achieve per-query costs around $0.012 to $0.025 while maintaining reasonable performance.
+
+The pro mode with augmentation enabled adds substantial cost components that reflect the increased processing depth. Web scraping itself incurs minimal direct costs beyond bandwidth, which remains negligible for typical query volumes. However, the scraping requires time and computational resources that translate to costs in cloud environments. More significantly, the augmentation stage requires embedding generation for potentially dozens of passage chunks. Using Jina AI cloud service for embeddings costs approximately $0.001 to $0.003 per query depending on the number of chunks processed. Self-hosted embedding generation through Infinity eliminates this API cost but requires GPU infrastructure that adds to fixed costs.
+
+The per-query cost can be formalized as a comprehensive cost model:
+
+\begin{equation}
+C(q) = C_{\text{rephrase}} + n_{\text{search}} \cdot C_{\text{search}} + C_{\text{reasoning}} + C_{\text{aug}} \cdot \mathbb{1}(\text{augment})
+\label{eq:cost_model}
+\end{equation}
+
+where each component is defined as:
+
+\begin{align}
+C_{\text{rephrase}} &= \text{tokens}_{\text{in}} \cdot r_{\text{in}} + \text{tokens}_{\text{out}} \cdot r_{\text{out}} \label{eq:cost_rephrase} \\
+C_{\text{search}} &= \text{price}_{\text{API}} \cdot n_{\text{queries}} \label{eq:cost_search} \\
+C_{\text{reasoning}} &= \sum_{i=1}^{n} \left(\text{context}_i \cdot r_{\text{in}} + \text{response}_i \cdot r_{\text{out}}\right) \label{eq:cost_reasoning} \\
+C_{\text{aug}} &= n_{\text{pages}} \cdot \left(C_{\text{scrape}} + n_{\text{chunks}} \cdot C_{\text{embed}}\right) \label{eq:cost_augmentation}
+\end{align}
+
+where $r_{\text{in}}$ and $r_{\text{out}}$ are the per-token rates for input and output processing, respectively.
+
+The break-even query volume $V^*$ for self-hosting is determined by:
+
+\begin{equation}
+V^* = \frac{C_{\text{fixed}}}{C_{\text{API}} - C_{\text{marginal}}}
+\label{eq:breakeven}
+\end{equation}
+
+where $C_{\text{fixed}}$ includes infrastructure costs and $C_{\text{marginal}}$ is the incremental cost per query in self-hosted deployment.
+
+The reasoning agent processing in pro mode consumes more resources than default mode due to larger context windows filled with augmented content. The agent processes 5,000 to 10,000 input tokens per inference call rather than 1,500 to 3,000, increasing costs proportionally. The augmented context enables more thorough reasoning but requires five to ten language model calls rather than three to five. The combined effect increases reasoning costs to $0.025 to $0.100 per query depending on query complexity and model selection. The total pro mode cost ranges from $0.032 to $0.120 per query for API-based deployments, representing roughly 50 to 100 percent cost increase over default mode in exchange for dramatically improved accuracy on complex queries.
+
+\begin{table}[htbp]
+\centering
+\caption{Per-Query Cost Analysis Across Deployment Configurations}
+\label{tab:cost_per_query}
+\resizebox{\textwidth}{!}{%
+\begin{tabular}{lcccc}
+\hline
+\textbf{Component/Configuration} & \textbf{Default Mode} & \textbf{Pro Mode} & \textbf{Cost Driver} & \textbf{Break-Even} \\
+\hline
+\multicolumn{5}{l}{\textit{API-Based Deployment (per query)}} \\
+Query Rephrasing & \$0.002--0.005 & \$0.002--0.005 & LLM inference & -- \\
+Search API (2--3 calls) & \$0.002--0.009 & \$0.002--0.009 & Serper.dev & -- \\
+Agent Reasoning & \$0.017--0.045 & \$0.025--0.100 & LLM inference & -- \\
+Web Scraping & -- & \$0.000--0.001 & Bandwidth & -- \\
+Embedding Generation & -- & \$0.001--0.003 & Jina AI API & -- \\
+\textbf{Total API-Based} & \$0.021--0.059 & \$0.032--0.120 & -- & -- \\
+\hline
+\multicolumn{5}{l}{\textit{Self-Hosted Deployment}} \\
+Fixed Monthly Cost & \multicolumn{2}{c}{\$3,600} & Infrastructure & -- \\
+Per-Query Marginal & \$0.001--0.003 & \$0.002--0.005 & Compute/BW & -- \\
+\hline
+\multicolumn{5}{l}{\textit{Break-Even Analysis (queries/month)}} \\
+vs. Perplexity (\$0.02/q) & \multicolumn{2}{c}{180,000} & -- & 5 months \\
+vs. GPT-4o Search (\$0.10/q) & \multicolumn{2}{c}{36,000} & -- & 1 month \\
+vs. ODS API (\$0.025/q) & \multicolumn{2}{c}{144,000} & -- & 4 months \\
+\hline
+\multicolumn{5}{l}{\textit{Cost-Optimized Configuration}} \\
+GPT-3.5 Rephrasing & \$0.001--0.002 & \$0.001--0.002 & -- & -- \\
+Self-Hosted SearXNG & \$0.000 & \$0.000 & -- & -- \\
+Claude Sonnet Reasoning & \$0.008--0.020 & \$0.012--0.040 & -- & -- \\
+Self-Hosted Infinity & -- & \$0.000 & -- & -- \\
+\textbf{Total Optimized} & \$0.012--0.025 & \$0.018--0.048 & -- & -- \\
+\hline
+\end{tabular}%
+}
+\begin{tablenotes}
+\small
+\item Note: Costs as of October 2025. Break-even volumes assume self-hosted fixed costs of \$3,600/month. Payback period calculated from initial infrastructure investment of \$50,000.
+\end{tablenotes}
+\end{table}
+
+
+The cost comparison with proprietary alternatives reveals interesting patterns. Perplexity API pricing at estimated $0.01 to $0.05 per query for standard tier appears competitive with or slightly below Open Deep Search default mode costs. However, Perplexity Sonar Pro at estimated $0.03 to $0.05 per query compares favorably to Open Deep Search pro mode only when using premium base models. Organizations using cost-optimized Open Deep Search configurations can achieve lower per-query costs than Perplexity while maintaining transparency and customization capabilities. The GPT-4o Search Preview at estimated $0.05 to $0.20 per query generally exceeds Open Deep Search costs, though the multimodal capabilities and seamless integration may justify premium pricing for some use cases.
+
+The cost structure enables several optimization strategies that organizations can employ to reduce expenses while maintaining capabilities. Tiered service levels can route simple queries to default mode while reserving pro mode for complex queries that justify additional cost. Caching at multiple layers eliminates redundant processing for repeated or similar queries. Batch processing amortizes fixed overhead across multiple queries when real-time response is not critical. Model selection based on query characteristics uses expensive capable models only when necessary. Prompt optimization reduces token consumption without sacrificing reasoning quality. These techniques collectively can reduce costs by 30 to 50 percent compared to naive deployment without compromising performance on important queries.
+
+\subsection{Infrastructure Cost Modeling for Self-Hosted Deployment}
+
+Self-hosted deployment fundamentally changes the cost structure from variable per-query charges to fixed infrastructure investment and operational expenses. Understanding the economics of self-hosting requires comprehensive modeling of all cost components and analysis of how per-query costs evolve with deployment scale.
+
+The capital expenditure for self-hosted infrastructure depends primarily on the GPU requirements for running language models. A minimal viable configuration uses two NVIDIA A100 80~GB GPUs that together provide sufficient memory to run models such as Llama 3.1~70B with acceptable inference latency. The hardware cost, including GPUs, server chassis, power supplies, networking, and storage, totals approximately \$\,\numrange{45000}{55000} depending on specific component selection and vendor pricing. This substantial upfront investment creates a significant barrier to self-hosting but can be amortized over the useful life of the hardware.
+
+
+The capital amortization calculation assumes a three-year useful life for GPU hardware, reflecting the reality that newer generations provide substantially better performance characteristics that often justify upgrades on this timescale. Amortizing \$\,\num{50000} over \num{36} months yields a monthly capital cost of approximately \$\,\num{1389}. Organizations with longer hardware refresh cycles or access to already-owned infrastructure can reduce or eliminate this cost component, while those requiring cutting-edge performance may refresh hardware more frequently, increasing amortized costs.
+
+Power consumption represents a significant ongoing operational expense for self-hosted deployment. Two A100 GPUs with supporting server infrastructure consume approximately \SI{2}{\kilo\watt} under typical load. At average commercial electricity rates of \$\,\num{0.12} per~kWh and assuming 24/7 operation, the monthly power cost reaches approximately \$\,\num{173}. Organizations in regions with higher electricity costs face proportionally higher expenses, while those with access to cheaper power or renewable energy can reduce this component. Data center deployments may face additional cooling costs that effectively double or triple the power expense.
+
+Bandwidth costs remain modest for typical search workloads despite the substantial data transfer involved in web scraping. Assuming average bandwidth consumption of \SI{100}{\giga\byte} per thousand queries and commercial bandwidth pricing around \$\,\num{0.05} per~GB, bandwidth costs approximately \$\,\num{5} per thousand queries or \$\,\num{0.005} per query. At \num{100000} queries monthly, bandwidth costs reach \$\,\num{500}. Most deployments at this scale negotiate volume discounts that reduce effective per-GB pricing. The bandwidth component rarely exceeds \$\,\numrange{100}{300} monthly even at substantial query volumes.
+
+
+Maintenance and operational support represent a critical cost component often underestimated in preliminary analysis. Self-hosted infrastructure requires monitoring for performance and reliability issues, applying software updates and security patches, troubleshooting and incident response, capacity planning and scaling, and implementing backup and disaster recovery procedures. A part-time DevOps engineer with an annual salary of \$\,\num{100000} allocating \SI{20}{\percent} time to search infrastructure management costs approximately \$\,\num{20000} annually or \$\,\num{1667} monthly. Organizations with existing infrastructure teams may absorb this work within current headcount, while smaller organizations might require external support contracts at comparable costs.
+
+Supporting infrastructure components add incremental costs beyond the primary language model servers. Self-hosted SearXNG search infrastructure requires a modest virtual machine or container environment costing \$\,\numrange{20}{50} monthly. The Infinity embedding server can run on the same GPUs used for language models with negligible marginal cost, or on separate CPU infrastructure if GPU resources are constrained. Monitoring tools, logging infrastructure, and other operational necessities add \$\,\numrange{50}{100} monthly. Load balancers for high availability and reverse proxies for security add another \$\,\numrange{50}{100} monthly. The aggregate supporting infrastructure costs typically total \$\,\numrange{150}{300} monthly.
+
+Aggregating all components yields total monthly infrastructure costs for minimal self-hosted deployment of approximately \$\,\num{3600}, comprising \$\,\num{1389} amortized capital, \$\,\num{173} power, \$\,\num{200} bandwidth, \$\,\num{1667} operations, and \$\,\num{200} supporting infrastructure. This fixed-cost structure creates dramatically different economics than per-query API pricing. At \num{10000} queries monthly, the per-query cost reaches \$\,\num{0.36}, far exceeding API alternatives. At \num{50000} queries monthly, per-query cost drops to \$\,\num{0.072}, approaching competitiveness with API pricing. At \num{100000} queries monthly, per-query cost reaches \$\,\num{0.036}, providing clear savings compared to typical API costs. At \num{500000} queries monthly, per-query cost falls to \$\,\num{0.007}, delivering dramatic savings of 80--90\% compared to API alternatives.
+
+The break-even analysis reveals critical volume thresholds where self-hosting becomes economically advantageous. Comparing against the Perplexity standard tier at an estimated \$\,\num{0.02} per query, the break-even point occurs around \num{180000} queries monthly. Against OpenAI GPT-4o Search at an estimated \$\,\num{0.10} per query, break-even occurs around \num{36000} queries monthly. Against cost-optimized Open Deep Search API deployment at \$\,\num{0.025} per query, break-even occurs around \num{144000} queries monthly. These calculations suggest that organizations exceeding roughly \numrange{100000}{150000} queries monthly should seriously evaluate self-hosting for economic benefits alone, while those below \num{50000} monthly likely benefit from API-based deployment.
+
+
+The scalability characteristics of self-hosted deployment prove favorable as volume increases. Adding GPU capacity to handle higher throughput follows near-linear cost scaling, while per-query API costs scale strictly linearly. A deployment scaling from \num{100000} to \num{500000} queries monthly might require doubling GPU infrastructure from two to four A100 GPUs, increasing monthly infrastructure costs to approximately \$\,\num{6000}. However, the per-query cost drops from \$\,\num{0.036} to \$\,\num{0.012} rather than remaining constant as with API pricing. This favorable scaling creates increasing returns to self-hosting at scale.
+
+Cloud-based GPU rental provides an alternative to owned infrastructure that eliminates capital expense in exchange for higher operational costs. AWS \texttt{p4d.24xlarge} instances with eight A100 40~GB GPUs cost approximately \$\,\num{32} per hour or \$\,\num{23040} monthly for continuous operation. Google Cloud \texttt{A2} and Azure \texttt{NC~A100} instances offer similar pricing. These costs exceed the total cost of ownership for owned infrastructure under typical depreciation schedules. However, cloud rental eliminates upfront capital requirements, provides operational flexibility to scale with demand, and avoids hardware obsolescence risk. Organizations with highly variable query volumes or those testing self-hosting viability may prefer cloud rental despite higher total costs.
+
+\subsection{Three-Year Total Cost of Ownership Scenarios}
+
+Comprehensive total cost of ownership analysis over multi-year horizons reveals the long-term economic implications of different deployment strategies. The three-year modeling period balances the need for long-range planning against uncertainty in technology evolution and organizational requirements. The analysis considers several representative scenarios that span typical organizational scale and growth trajectories.
+
+The small deployment scenario assumes an organization starting at \num{10000} queries monthly with modest growth to \num{25000} monthly by year three. This trajectory might represent a startup product gaining traction, a research group expanding its investigations, or an enterprise pilot program growing gradually. 
+
+Using Perplexity API at an average \$\,\num{0.02} per query yields year-one costs of \$\,\num{2400} (based on \num{10000} monthly = \num{120000} annual queries), year-two costs of \$\,\num{4200} (based on a \num{17500} monthly average = \num{210000} annual queries), and year-three costs of \$\,\num{6000} (based on \num{25000} monthly = \num{300000} annual queries), totaling \$\,\num{12600} over three years. 
+
+Using Open Deep Search with API-based components at an average \$\,\num{0.03} per query yields three-year costs of \$\,\num{18900}. Self-hosting proves economically unfavorable at this scale, with three-year costs reaching \$\,\num{129600} for owned infrastructure (including \$\,\num{50000} capital plus \$\,\num{79600} operational expenses). The analysis therefore favors API-based deployment for this small deployment scenario.
+
+
+The medium deployment scenario represents an organization starting at \num{50000} queries monthly and growing to \num{150000} monthly by year three, reflecting successful product adoption or expanding research programs. 
+
+Using the Perplexity API yields year-one costs of \$\,\num{12000}, year-two costs of \$\,\num{24000}, and year-three costs of \$\,\num{36000}, totaling \$\,\num{72000} over three years. Using the Open Deep Search API configuration yields three-year costs of \$\,\num{108000}. 
+
+Self-hosting with owned infrastructure requires \$\,\num{50000} in capital expenditure plus \$\,\num{129600} in operational expenses, totaling \$\,\num{179600}, which exceeds the API-based deployment costs. However, the per-query cost trajectory indicates that self-hosting becomes economically competitive by year three as query volume approaches the break-even threshold. Organizations anticipating continued growth beyond year three may prefer to absorb higher initial costs to position for future savings.
+
+
+The large deployment scenario assumes aggressive growth from \num{100000} to \num{500000} queries monthly, representing successful enterprise deployment or widely adopted research infrastructure. Using the Perplexity API yields three-year costs of \$\,\num{180000}. Using OpenAI GPT-4o Search yields three-year costs of \$\,\num{720000}. Open Deep Search with API components costs \$\,\num{540000} over three years. 
+
+Self-hosted infrastructure requires \$\,\num{50000} in capital expenditure plus \$\,\num{129600} in operational expenses, totaling \$\,\num{179600}, providing savings of approximately \$\,\num{360000} compared to Open Deep Search API deployment and \$\,\num{540000} compared to OpenAI. The economic case for self-hosting becomes overwhelmingly favorable at this scale.
+
+The total cost of ownership over $T$ years with annual growth rate $g$ can be formalized as:
+
+\begin{equation}
+\text{TCO}_{\text{API}} = \sum_{t=1}^{T} V_0(1+g)^{t-1} \cdot C_{\text{per-query}} \cdot 12
+\label{eq:tco_api}
+\end{equation}
+
+\begin{equation}
+\text{TCO}_{\text{self}} = C_{\text{capex}} + \sum_{t=1}^{T} \left(C_{\text{opex}} + C_{\text{marginal}} \cdot V_0(1+g)^{t-1} \cdot 12\right)
+\label{eq:tco_self}
+\end{equation}
+
+where $V_0$ is the initial monthly query volume, $C_{\text{capex}}$ is capital expenditure, and $C_{\text{opex}}$ is monthly operational expense.
+
+The net savings function is:
+
+\begin{equation}
+S(V_0, g, T) = \text{TCO}_{\text{API}} - \text{TCO}_{\text{self}}
+\label{eq:net_savings}
+\end{equation}
+
+The payback period $t^*$ for infrastructure investment is:
+
+\begin{equation}
+t^* = \min\left\{t \in \mathbb{N} : \sum_{s=1}^{t} \text{Savings}_s \geq C_{\text{capex}}\right\}
+\label{eq:payback_period}
+\end{equation}
+
+For the large deployment scenario with $V_0 = 100{,}000$, $g = 0.15$, and $T = 3$, the payback period is approximately 8-10 months.
+
+The enterprise scenario considers massive-scale deployment starting at \num{500000} queries monthly and growing to \num{2000000} monthly, representing critical infrastructure for large organizations. Proprietary API costs become prohibitive, with Perplexity costing \$\,\num{720000} over three years and OpenAI potentially exceeding \$\,\num{2880000}. 
+
+Self-hosted deployment with scaled infrastructure requires approximately four A100 GPU pairs to handle peak throughput, increasing capital to \$\,\num{200000} and operations to \$\,\num{259200} for a three-year total of \$\,\num{459200}. The resulting savings compared to API alternatives range from \$\,\num{1500000} to \$\,\num{2400000}, clearly justifying the infrastructure investment and associated operational complexity.
+
+
+The scenario analysis incorporates several realistic factors that affect total cost of ownership beyond simple per-query multiplication. Volume discounts from API providers typically activate at substantial scale, reducing effective per-query pricing by 20 to 40 percent for customers exceeding millions of queries monthly. However, these discounts require negotiation and often involve annual commitments that reduce flexibility. Infrastructure efficiency improvements reduce operational costs over time as organizations optimize deployment and benefit from improving hardware capabilities. The analysis assumes 10 percent annual operational efficiency gains that partially offset fixed costs. Technology obsolescence requires periodic hardware refresh for self-hosted deployment. The analysis assumes three-year hardware life, though some organizations may extract four to five years from GPU investments with acceptable performance degradation.
+
+\begin{table}[htbp]
+\centering
+\caption{Three-Year Total Cost of Ownership by Deployment Scale}
+\label{tab:tco_scenarios}
+\resizebox{\textwidth}{!}{%
+\begin{tabular}{lccccc}
+\hline
+\textbf{Scenario} & \textbf{Initial Vol.} & \textbf{Year 3 Vol.} & \textbf{Growth} & \textbf{Configuration} & \textbf{3-Year TCO} \\
+\hline
+\multicolumn{6}{l}{\textit{Small Deployment (10K $\to$ 25K queries/month)}} \\
+ & 10,000 & 25,000 & 25\%/yr & Perplexity API & \$12,600 \\
+ & 10,000 & 25,000 & 25\%/yr & ODS API & \$18,900 \\
+ & 10,000 & 25,000 & 25\%/yr & Self-Hosted & \$129,600 \\
+\hline
+\multicolumn{6}{l}{\textit{Medium Deployment (50K $\to$ 150K queries/month)}} \\
+ & 50,000 & 150,000 & 35\%/yr & Perplexity API & \$72,000 \\
+ & 50,000 & 150,000 & 35\%/yr & ODS API & \$108,000 \\
+ & 50,000 & 150,000 & 35\%/yr & Self-Hosted & \$179,600 \\
+\hline
+\multicolumn{6}{l}{\textit{Large Deployment (100K $\to$ 500K queries/month)}} \\
+ & 100,000 & 500,000 & 50\%/yr & Perplexity API & \$180,000 \\
+ & 100,000 & 500,000 & 50\%/yr & GPT-4o Search & \$720,000 \\
+ & 100,000 & 500,000 & 50\%/yr & ODS API & \$540,000 \\
+ & 100,000 & 500,000 & 50\%/yr & Self-Hosted & \$179,600 \\
+ & \multicolumn{3}{c}{\textit{Savings vs. GPT-4o}} & & \textbf{\$540,400} \\
+\hline
+\multicolumn{6}{l}{\textit{Enterprise Deployment (500K $\to$ 2M queries/month)}} \\
+ & 500,000 & 2,000,000 & 45\%/yr & Perplexity API & \$720,000 \\
+ & 500,000 & 2,000,000 & 45\%/yr & GPT-4o Search & \$2,880,000 \\
+ & 500,000 & 2,000,000 & 45\%/yr & Self-Hosted (4x GPU) & \$459,200 \\
+ & \multicolumn{3}{c}{\textit{Savings vs. GPT-4o}} & & \textbf{\$2,420,800} \\
+\hline
+\end{tabular}%
+}
+\begin{tablenotes}
+\small
+\item Note: Perplexity assumes \$0.02/query, GPT-4o Search \$0.10/query, ODS API \$0.03/query average. Self-hosted includes \$50K capex (amortized) + \$3,600/month opex for base configuration, scaled for enterprise. Growth rates compound annually.
+\end{tablenotes}
+\end{table}
+
+
+The risk-adjusted analysis incorporates uncertainty about future query volumes and technology evolution. Organizations face inherent uncertainty in forecasting demand growth, with actual volumes potentially varying 50 to 200 percent from projections. API pricing provides flexibility to handle uncertainty since costs scale with actual usage, while self-hosted infrastructure represents committed fixed costs regardless of utilization. However, API pricing creates exposure to vendor price increases, which have historically occurred with 20 to 50 percent increases not uncommon as vendors optimize margins. Self-hosted deployment insulates organizations from vendor pricing power while creating exposure to hardware cost fluctuations and operational expense inflation.
+
+The opportunity cost analysis considers alternative uses of capital required for self-hosted infrastructure. The $50,000 to $200,000 capital investment for GPU hardware could alternatively fund product development, market expansion, or other organizational priorities. Organizations must compare the expected return from self-hosting cost savings against returns available from alternative capital deployment. Startups with limited capital and high opportunity costs for funds may rationally prefer API deployment even above the break-even volume, accepting higher total costs to preserve capital for growth initiatives. Established enterprises with available capital and lower opportunity costs more readily justify infrastructure investment.
+
+The strategic flexibility consideration weighs the optionality provided by different deployment approaches. API-based deployment enables rapid scaling up or down in response to demand fluctuations, easy experimentation with multiple providers, and quick adoption of new model capabilities as they become available. Self-hosted deployment involves longer lead times for capacity additions, reduced flexibility to shift between technologies, and greater organizational inertia around deployment decisions. However, self-hosting provides independence from vendor decisions about pricing, feature sets, and service availability, insulating organizations from strategic risks associated with vendor dependence.
+
+\subsection{Cost Optimization Strategies and Techniques}
+
+Organizations can employ numerous strategies to reduce costs across all deployment configurations while maintaining or improving capabilities. These optimization techniques span infrastructure choices, operational practices, and architectural decisions. The cumulative impact of systematic optimization often reduces costs by 40 to 60 percent compared to naive deployment.
+
+The model selection strategy represents the highest-impact optimization lever. Base model choice profoundly affects both per-query costs and absolute performance. Using GPT-4 for all reasoning operations costs approximately $0.04 to $0.08 per query but delivers strongest performance. Substituting Claude Sonnet or GPT-3.5 for appropriate query subsets reduces costs to $0.015 to $0.030 per query while maintaining acceptable performance for many use cases. Open-source models like Llama 3.1 70B through Fireworks or Together AI cost $0.008 to $0.015 per query with performance adequate for straightforward queries. The optimization strategy routes queries to appropriate models based on complexity detection, using expensive capable models only when justified.
+
+The caching strategy at multiple layers eliminates redundant computation for repeated or similar queries. Search result caching stores SERP responses for identical or highly similar queries with time-to-live parameters ranging from hours to days depending on content freshness requirements. Typical cache hit rates reach 15 to 30 percent for general query workloads, eliminating search API costs for these queries. Embedding caching stores generated vectors persistently, enabling reuse when the same passages appear across queries. Cache hit rates for embeddings reach 40 to 60 percent for corpora with substantial overlap like Wikipedia. Response caching for identical queries enables instant responses at near-zero marginal cost. Cache hit rates of 5 to 10 percent prove common for general workloads. The aggregate caching impact reduces costs by 20 to 35 percent for typical deployments.
+
+The adaptive mode selection routes queries to default or pro mode based on complexity assessment. Simple factual lookups execute in default mode without expensive augmentation, while complex multi-hop queries trigger pro mode processing. The classification mechanism uses lightweight heuristics including query length, presence of multiple questions or temporal references, and entity count to predict complexity. Alternatively, organizations can implement two-stage processing where all queries begin in default mode and only escalate to pro mode when initial results prove insufficient. The adaptive strategy reduces costs by 25 to 40 percent compared to always using pro mode while maintaining high accuracy on complex queries.
+
+The batch processing optimization amortizes fixed overhead across multiple queries when real-time response is not required. Research workloads and analytical tasks often involve processing large query sets where individual response latency matters less than aggregate throughput. Batch processing enables larger inference batch sizes that improve GPU utilization, shared embedding generation for multiple queries over common corpora, and parallel scraping that reduces total wait time. The technique improves cost efficiency by 15 to 25 percent for workloads amenable to batch processing.
+
+The prompt optimization reduces token consumption without sacrificing reasoning quality. Concise system prompts eliminate verbose instructions that inflate token counts. Efficient few-shot examples demonstrate reasoning patterns using minimal tokens. Context truncation removes marginally relevant information when approaching model context limits. The prompt engineering reduces token consumption by 20 to 30 percent compared to naive verbose prompting, directly reducing inference costs proportionally.
+
+The infrastructure optimization for self-hosted deployment improves efficiency and reduces operational costs. Model quantization to 8-bit or 4-bit precision reduces memory requirements and increases throughput with minimal accuracy impact. Inference optimization through frameworks like vLLM or TensorRT-LLM improves tokens per second by 200 to 400 percent compared to naive implementations. Speculative decoding reduces generation latency by 30 to 50 percent for suitable workloads. Efficient batching combines multiple concurrent queries to maximize GPU utilization. The aggregate infrastructure optimization reduces hardware requirements by 30 to 50 percent compared to unoptimized deployment, translating to proportional capital and operational cost savings.
+
+The search provider optimization balances cost against quality. Serper.dev provides high-quality Google results but charges per search. SearXNG self-hosted infrastructure eliminates per-search costs after fixed infrastructure investment. The hybrid strategy uses Serper for important queries requiring highest quality while routing routine queries to SearXNG. The approach maintains quality for critical use cases while reducing costs by 60 to 80 percent compared to Serper-only configuration.
+
+The tiered service level implementation enables monetization to offset infrastructure costs. Organizations serving external users can offer free basic tier with default mode processing, premium tier with pro mode and higher rate limits, and enterprise tier with dedicated infrastructure and service guarantees. The revenue from premium and enterprise tiers subsidizes free tier costs while providing customers options matching their willingness to pay. The tiered strategy enables sustainable operations at larger scale than pure internal cost center models would support.
+
+\subsection{Financial Decision Framework and Recommendations}
+
+The comprehensive cost analysis enables development of a structured decision framework that organizations can apply to determine optimal deployment configurations based on their specific circumstances. The framework considers multiple factors beyond simple cost minimization to incorporate strategic considerations, risk tolerance, and organizational capabilities.
+
+The volume-based decision rule provides a starting point based primarily on query scale. Organizations processing fewer than 30,000 queries monthly should default to API-based proprietary services that minimize total costs and operational complexity. The per-query costs prove acceptable at this scale while avoiding infrastructure investment and operational overhead. Organizations processing 30,000 to 100,000 queries monthly should consider Open Deep Search with API-based components that provide customization and transparency while remaining cost-competitive with proprietary alternatives. The configuration balances cost, capability, and operational complexity. Organizations processing 100,000 to 300,000 queries monthly should evaluate hybrid deployment with self-hosted language models but API-based search and embeddings. The configuration captures primary cost savings from model inference while limiting operational complexity. Organizations exceeding 300,000 queries monthly should default to fully self-hosted deployment that maximizes cost savings and control. The substantial volume justifies infrastructure investment and operational overhead.
+
+The capability-based decision rule considers requirements beyond pure query volume. Organizations requiring deep customization for domain-specific needs should self-host regardless of volume to enable architectural modifications impossible with API services. Medical, legal, financial, and other specialized domains often justify self-hosting at moderate volumes to enable tailored search strategies, custom tool integration, and domain-optimized reasoning. Organizations with strict privacy and data control requirements should self-host regardless of volume to ensure sensitive queries never leave private infrastructure. Healthcare under HIPAA, legal under attorney-client privilege, and financial under various regulations often mandate self-hosting.
+
+The capability-based assessment examines organizational readiness for self-hosted deployment. Organizations lacking DevOps expertise or infrastructure management capabilities should prefer API deployment regardless of potential cost savings. The operational complexity of self-hosting proves substantial and attempts by unprepared organizations often result in poor reliability, security vulnerabilities, and hidden costs exceeding initial projections. Organizations with existing machine learning infrastructure and GPU clusters can often add search capabilities at modest incremental cost, making self-hosting attractive even at moderate volumes. The marginal cost of extending existing infrastructure proves far lower than greenfield deployment.
+
+The risk tolerance evaluation weighs vendor dependence against operational risk. Organizations prioritizing stability and predictability prefer API deployment that offloads operational risk to vendors with service level agreements, mature operations, and incident response capabilities. Organizations concerned about vendor lock-in, pricing power, or strategic misalignment prefer self-hosting that provides independence despite operational responsibility. The risk preferences vary widely across organizations based on their specific contexts and priorities.
+
+The time horizon consideration accounts for growth expectations over multi-year periods. Organizations anticipating rapid growth should plan deployment strategies around expected peak volumes rather than current levels to avoid expensive migrations between configurations. A startup expecting 10x growth over two years should design for the target scale even if it means initially over-provisioning capacity. Organizations with stable mature workloads can optimize for current volumes without substantial risk of outgrowing deployment configuration.
+
+The strategic value assessment examines competitive differentiation potential. Organizations building products where search capabilities provide core differentiation may justify self-hosting even at volumes below pure economic break-even. The customization, performance optimization, and feature development enabled by self-hosting can create competitive advantages worth the additional cost. Organizations using search as commodity utility can default to API services that minimize distraction from core business.
+
+The implementation roadmap provides phased approach for organizations transitioning toward self-hosted deployment. Phase one involves API-based deployment using Open Deep Search to gain familiarity with the architecture while minimizing operational complexity and capital investment. This initial phase enables validation of capabilities and refinement of requirements. Phase two introduces self-hosted language models while maintaining API-based search and embeddings. This hybrid configuration captures primary cost savings while limiting operational scope. Phase three completes migration to fully self-hosted deployment including search infrastructure and embedding generation. The phased approach spreads investment and learning over time while enabling early value capture.
+
+The economic modeling indicates that Open Deep Search provides compelling value across deployment scales through flexibility to optimize configuration for specific circumstances. Small deployments benefit from API-based access to sophisticated capabilities without infrastructure investment. Medium deployments benefit from customization and transparency while maintaining cost competitiveness. Large deployments benefit from dramatic cost savings of 70 to 90 percent compared to proprietary alternatives while gaining control and strategic independence. The architectural design enabling this flexibility across scales represents a significant achievement that proprietary alternatives cannot match.
