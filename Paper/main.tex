@@ -1,0 +1,456 @@
+\documentclass[12pt,a4paper]{article}
+
+% ============== PACKAGES ==============
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage{geometry}
+\usepackage{graphicx}
+\usepackage[hyphens]{url}
+\usepackage{xurl}
+\usepackage[colorlinks=true, breaklinks=true, urlcolor=blue, linkcolor=blue, citecolor=blue]{hyperref}
+\usepackage{fancyhdr}
+\usepackage{titlesec}
+\usepackage{xcolor}
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{booktabs}
+\usepackage{caption}
+\usepackage{subcaption}
+\usepackage{pgfplots}
+\pgfplotsset{compat=1.18}
+\usepackage{tikz}
+\usetikzlibrary{positioning, arrows.meta, shapes.geometric, patterns}
+\usepackage{enumitem}
+\usepackage{times}
+\usepackage{setspace}
+\usepackage{colortbl}
+\usepackage{array}
+
+% ============== PAGE SETUP ==============
+\geometry{
+    a4paper,
+    left=2.8cm,
+    right=2.8cm,
+    top=3cm,
+    bottom=3cm,
+    footskip=1cm,
+    headheight=1.5cm,
+    headsep=0.6cm
+}
+
+% ============== HYPERLINK COLORS ==============
+\hypersetup{
+    colorlinks=true,
+    linkcolor=blue,
+    citecolor=blue,
+    urlcolor=blue,
+    pdftitle={Open Deep Search and the Future of Reasoning Agents},
+    pdfauthor={Technical Research Analysis}
+}
+
+% ============== HEADER/FOOTER SETUP ==============
+\pagestyle{fancy}
+\fancyhf{}
+
+\fancypagestyle{firstpage}{
+    \fancyhf{}
+    \fancyhead[L]{\raisebox{-0.6cm}{\includegraphics[height=1.2cm]{logo.png}}}
+    \fancyhead[R]{\raisebox{-0.1cm}{October 8, 2025}}
+    \fancyfoot[C]{\rule{0.9\textwidth}{0.4pt}}
+    \fancyfoot[R]{\thepage}
+    \renewcommand{\headrulewidth}{0pt}
+    \renewcommand{\footrulewidth}{0pt}
+}
+
+\fancyhead[L]{}
+\fancyhead[C]{\small\textit{Open Deep Search: Technical Architecture and Ecosystem Analysis}}
+\fancyhead[R]{}
+\fancyfoot[C]{\rule{0.9\textwidth}{0.4pt}}
+\fancyfoot[R]{\thepage}
+\renewcommand{\headrulewidth}{0.4pt}
+\renewcommand{\footrulewidth}{0pt}
+
+% ============== SECTION FORMATTING ==============
+\titleformat{\section}
+{\normalfont\Large\bfseries\color{black}}{\thesection.}{0.5em}{}
+\titleformat{\subsection}
+{\normalfont\large\bfseries\color{black}}{\thesubsection}{0.5em}{}
+\titleformat{\subsubsection}
+{\normalfont\normalsize\bfseries\color{black}}{\thesubsubsection}{0.5em}{}
+
+\titlespacing*{\section}{0pt}{16pt}{8pt}
+\titlespacing*{\subsection}{0pt}{12pt}{6pt}
+\titlespacing*{\subsubsection}{0pt}{10pt}{5pt}
+
+% ============== CUSTOM COMMANDS ==============
+\newcommand{\papertitle}[1]{%
+    {\LARGE\bfseries #1}%
+}
+
+\newcommand{\papersubtitle}[1]{%
+    {\large\textit{#1}}%
+}
+
+\newcommand{\authorlist}[1]{%
+    {\normalsize #1}%
+}
+
+% ============== DOCUMENT START ==============
+\begin{document}
+
+\thispagestyle{firstpage}
+
+% Top line
+\noindent\rule{\textwidth}{0.4pt}
+
+\vspace{1.5em}
+
+% ============== TITLE ==============
+\begin{center}
+\papertitle{Open Deep Search and the Future of Reasoning Agents: A Comprehensive Technical Analysis of Architecture, Performance, and Ecosystem Implications}
+
+\vspace{0.8em}
+
+\papersubtitle{Examining the Convergence of Open-Source Search Intelligence, Agentic Reasoning Frameworks, and Decentralized AI Ecosystems}
+
+\vspace{1em}
+
+% ============== AUTHORS ==============
+\authorlist{Shiro Oni | Independent Technical Research Analysis}
+
+\vspace{0.1em}
+
+\end{center}
+
+% Bottom line
+\noindent\rule{\textwidth}{0.4pt}
+
+\vspace{0.5em}
+
+% ============== ABSTRACT ==============
+\begin{abstract}
+\noindent
+The emergence of proprietary search augmented language models has created a significant capability gap between closed and open-source artificial intelligence systems. This paper presents a comprehensive technical analysis of Open Deep Search, an open-source framework developed by the Sentient Foundation that addresses this disparity through a modular architecture combining sophisticated web search capabilities with agentic reasoning paradigms. We examine the dual-component design comprising an advanced search tool featuring query rephrasing, semantic retrieval, and web content augmentation, paired with reasoning agents implementing both ReAct and CodeAct frameworks. Our analysis reveals that Open Deep Search achieves performance near parity with proprietary alternatives, scoring 88.3 percent on SimpleQA and 75.3 percent on FRAMES benchmarks, surpassing GPT-4o Search Preview on complex multi-hop reasoning tasks by 9.7 percentage points. We provide detailed architectural documentation of the plug-and-play model integration system, component-level performance characteristics, and scalability considerations for production deployment. The paper extends beyond pure technical evaluation to examine competitive positioning against Perplexity, OpenAI, and emerging alternatives, conducting rigorous benchmark methodology critique and total cost of ownership analysis. We investigate the integration of Open Model License fingerprinting technology for sustainable monetization of open-source models while preserving transparency. Our research documents multi-agent orchestration patterns, advanced reasoning capabilities including deep multi-hop queries and temporal analysis, and practical deployment considerations encompassing reliability, cost optimization, and quality assessment frameworks. The analysis concludes with identification of technical limitations, open research problems in reasoning-search integration, and broader societal implications of democratized search intelligence. This work establishes Open Deep Search as a foundational technology bridging the gap between proprietary and open artificial intelligence ecosystems.
+\end{abstract}
+
+\newpage
+
+\tableofcontents
+
+\newpage
+
+% ============== IMPORT SECTIONS ==============
+
+\input{01_introduction}
+
+\input{02_system_architecture}
+
+\input{03_search_tool_pipeline}
+
+\input{04_reasoning_agents}
+
+\input{05_benchmark_performance}
+
+\input{06_competitive_analysis}
+
+\input{07_cost_tco_analysis}
+
+\input{08_oml_ecosystem}
+
+\input{09_advanced_capabilities}
+
+\input{10_deployment_production}
+
+\input{11_limitations_future}
+
+\input{12_conclusion}
+
+% ============== REFERENCES ==============
+\newpage
+
+\begin{thebibliography}{99}
+
+\bibitem{ods_paper}
+Alzubi, S., et al. (2025). Open Deep Search and the Future of Reasoning Agents: Architecture, Performance, and Ecosystem Implications. \textit{arXiv preprint arXiv:2503.20201}. Available at: \url{https://arxiv.org/abs/2503.20201}
+
+\bibitem{ods_github}
+Sentient Foundation. (2025). OpenDeepSearch: Open-source search augmented reasoning framework. GitHub repository. Available at: \url{https://github.com/sentient-agi/OpenDeepSearch}
+
+\bibitem{sentient_docs}
+Sentient Foundation. (2025). Official Documentation. Available at: \url{https://docs.sentient.xyz/}
+
+\bibitem{sentient_website}
+Sentient Foundation. (2025). Official Website. Available at: \url{https://www.sentient.xyz}
+
+\bibitem{oml_fingerprint}
+Sentient Foundation. (2025). OML 1.0 Fingerprinting: AI-native cryptographic primitives for model loyalty tracking. GitHub repository. Available at: \url{https://github.com/sentient-agi/OML-1.0-Fingerprinting}
+
+\bibitem{sentient_agent_framework}
+Sentient Foundation. (2025). Sentient Agent Framework: Multi-agent orchestration system. GitHub repository. Available at: \url{https://github.com/sentient-agi/Sentient-Agent-Framework}
+
+\bibitem{sentient_enclaves}
+Sentient Foundation. (2025). Sentient Enclaves Framework: Trusted execution environment integration. GitHub repository. Available at: \url{https://github.com/sentient-agi/Sentient-Enclaves-Framework}
+
+\bibitem{sentient_social}
+Sentient Foundation. (2025). Sentient Social Agent: Community-driven AI agents. GitHub repository. Available at: \url{https://github.com/sentient-agi/Sentient-Social-Agent}
+
+\bibitem{dobby_model}
+Sentient Foundation \& Fireworks AI. (2025). Dobby Unhinged: Llama 3.3 70B specialized variant. Available at: \url{https://fireworks.ai/models/sentientfoundation/dobby-unhinged-llama-3-3-70b-new}
+
+\bibitem{sentient_builder}
+Sentient Foundation. (2025). Builder Program: Community development initiative. Available at: \url{https://www.sentient.xyz/builder-program}
+
+\bibitem{react_paper}
+Yao, S., et al. (2023). ReAct: Synergizing Reasoning and Acting in Language Models. \textit{arXiv preprint arXiv:2210.03629}.
+
+\bibitem{codeact_paper}
+Wang, X., et al. (2024). Executable Code Actions Elicit Better LLM Agents. \textit{arXiv preprint arXiv:2402.01030}.
+
+\bibitem{cot_paper}
+Wei, J., et al. (2022). Chain-of-Thought Prompting Elicits Reasoning in Large Language Models. \textit{arXiv preprint arXiv:2201.11903}.
+
+\bibitem{cot_sc_paper}
+Wang, X., et al. (2023). Self-Consistency Improves Chain of Thought Reasoning in Language Models. \textit{arXiv preprint arXiv:2203.11171}.
+
+\bibitem{freshprompt}
+Vu, T., et al. (2023). FreshLLMs: Refreshing Large Language Models with Search Engine Augmentation. \textit{arXiv preprint arXiv:2310.03214}.
+
+\bibitem{smolagents}
+HuggingFace. (2025). SmolAgents: Lightweight agentic framework. GitHub repository. Available at: \url{https://github.com/huggingface/smolagents}
+
+\bibitem{crawl4ai}
+UncleCoder. (2025). Crawl4AI: Advanced web crawling and content extraction. GitHub repository. Available at: \url{https://github.com/unclecode/crawl4ai}
+
+\bibitem{infinity_embeddings}
+Feil, M. (2025). Infinity Embedding API: Self-hosted semantic search infrastructure. GitHub repository. Available at: \url{https://github.com/michaelfeil/infinity}
+
+\bibitem{litellm}
+BerriAI. (2025). LiteLLM: Unified interface for 50+ LLM providers. Available at: \url{https://litellm.ai}
+
+\bibitem{simpleqa}
+OpenAI. (2024). Introducing SimpleQA: A factuality benchmark for short-form questions. Available at: \url{https://openai.com/index/introducing-simpleqa/}
+
+\bibitem{frames_benchmark}
+Google Research. (2024). FRAMES Benchmark: Factuality, Retrieval, And reasoning MEasurement Set. HuggingFace dataset. Available at: \url{https://huggingface.co/datasets/google/frames-benchmark}
+
+\bibitem{llama3}
+Meta AI. (2024). Llama 3.1: Open foundation and fine-tuned chat models. \textit{Meta AI Research}.
+
+\bibitem{deepseek_r1}
+DeepSeek. (2025). DeepSeek-R1: Reasoning-focused language model. \textit{DeepSeek Research}.
+
+\bibitem{gpt4o}
+OpenAI. (2024). GPT-4o: Multimodal flagship model. \textit{OpenAI Technical Report}.
+
+\bibitem{gpt4o_search}
+OpenAI. (2025). GPT-4o Search Preview: Real-time web search integration. Model ID: gpt-4o-search-preview-20250311.
+
+\bibitem{claude}
+Anthropic. (2024). Claude 3.5 Sonnet: Advanced reasoning and analysis. \textit{Anthropic Technical Documentation}.
+
+\bibitem{gemini}
+Google DeepMind. (2024). Gemini 2.0: Next generation multimodal AI. \textit{Google AI Research}.
+
+\bibitem{perplexity}
+Perplexity AI. (2024). Perplexity Sonar: Real-time search-augmented language models. Available at: \url{https://www.perplexity.ai}
+
+\bibitem{perplexity_sonar}
+Perplexity AI. (2025). Sonar Reasoning Pro: Advanced multi-hop reasoning search system. \textit{Perplexity AI Product Documentation}.
+
+\bibitem{cerebras}
+Cerebras Systems. (2024). CS-2 Wafer-Scale Engine: Ultra-fast AI inference infrastructure. \textit{Cerebras Technical Specifications}.
+
+\bibitem{openai_api}
+OpenAI. (2025). API Pricing and Documentation. Available at: \url{https://openai.com/api/pricing}
+
+\bibitem{anthropic_api}
+Anthropic. (2025). Claude API Documentation. Available at: \url{https://docs.anthropic.com}
+
+\bibitem{serper}
+Serper.dev. (2025). Search Engine Results Page API. Available at: \url{https://serper.dev}
+
+\bibitem{searxng}
+SearXNG Community. (2025). SearXNG: Privacy-respecting metasearch engine. GitHub repository. Available at: \url{https://github.com/searxng/searxng}
+
+\bibitem{jina_ai}
+Jina AI. (2025). Neural Search Infrastructure: Embedding and reranking services. Available at: \url{https://jina.ai}
+
+\bibitem{wolfram_alpha}
+Wolfram Research. (2025). Wolfram Alpha API: Computational intelligence platform. Available at: \url{https://products.wolframalpha.com/api}
+
+\bibitem{openrouter}
+OpenRouter. (2025). Unified API for Large Language Models. Available at: \url{https://openrouter.ai}
+
+\bibitem{fireworks_ai}
+Fireworks AI. (2025). Fast inference platform for open-source models. Available at: \url{https://fireworks.ai}
+
+\bibitem{openperplex}
+OpenPerplex Community. (2024). Open-source Perplexity alternative. GitHub repository.
+
+\bibitem{perplexica}
+Perplexica Community. (2024). Open-source AI-powered search engine. GitHub repository.
+
+\bibitem{mindsearch}
+Research Community. (2024). MindSearch: Multi-agent web search framework. \textit{Research Paper}.
+
+\bibitem{rag_survey}
+Gao, Y., et al. (2023). Retrieval-Augmented Generation for Large Language Models: A Survey. \textit{arXiv preprint arXiv:2312.10997}.
+
+\bibitem{tool_learning}
+Qin, Y., et al. (2023). Tool Learning with Foundation Models. \textit{arXiv preprint arXiv:2304.08354}.
+
+\bibitem{agent_survey}
+Wang, L., et al. (2024). A Survey on Large Language Model based Autonomous Agents. \textit{arXiv preprint arXiv:2308.11432}.
+
+\bibitem{reasoning_survey}
+Huang, J., et al. (2023). Towards Reasoning in Large Language Models: A Survey. \textit{arXiv preprint arXiv:2212.10403}.
+
+\bibitem{benchmark_critique}
+Chang, Y., et al. (2024). A Survey on Evaluation of Large Language Models. \textit{ACM Computing Surveys}.
+
+\bibitem{hallucination}
+Zhang, Y., et al. (2023). Siren's Song in the AI Ocean: A Survey on Hallucination in Large Language Models. \textit{arXiv preprint arXiv:2309.01219}.
+
+\bibitem{search_quality}
+Nguyen, T., et al. (2024). Evaluating Search Result Quality: From Relevance to User Satisfaction. \textit{Information Retrieval Journal}.
+
+\bibitem{semantic_search}
+Reimers, N., \& Gurevych, I. (2019). Sentence-BERT: Sentence Embeddings using Siamese BERT-Networks. \textit{EMNLP 2019}.
+
+\bibitem{bm25}
+Robertson, S., \& Zaragoza, H. (2009). The Probabilistic Relevance Framework: BM25 and Beyond. \textit{Foundations and Trends in Information Retrieval}.
+
+\bibitem{information_retrieval}
+Manning, C. D., Raghavan, P., \& Schütze, H. (2008). \textit{Introduction to Information Retrieval}. Cambridge University Press.
+
+\bibitem{web_search}
+Baeza-Yates, R., \& Ribeiro-Neto, B. (2011). \textit{Modern Information Retrieval: The Concepts and Technology behind Search}. Addison-Wesley.
+
+\bibitem{neural_ir}
+Mitra, B., \& Craswell, N. (2018). An Introduction to Neural Information Retrieval. \textit{Foundations and Trends in Information Retrieval}.
+
+\bibitem{dense_retrieval}
+Karpukhin, V., et al. (2020). Dense Passage Retrieval for Open-Domain Question Answering. \textit{EMNLP 2020}.
+
+\bibitem{colbert}
+Khattab, O., \& Zaharia, M. (2020). ColBERT: Efficient and Effective Passage Search via Contextualized Late Interaction over BERT. \textit{SIGIR 2020}.
+
+\bibitem{reranking}
+Nogueira, R., et al. (2020). Document Ranking with a Pretrained Sequence-to-Sequence Model. \textit{EMNLP 2020 Findings}.
+
+\bibitem{query_reformulation}
+Nogueira, R., \& Cho, K. (2017). Task-Oriented Query Reformulation with Reinforcement Learning. \textit{EMNLP 2017}.
+
+\bibitem{multi_hop_qa}
+Yang, Z., et al. (2018). HotpotQA: A Dataset for Diverse, Explainable Multi-hop Question Answering. \textit{EMNLP 2018}.
+
+\bibitem{open_domain_qa}
+Chen, D., et al. (2017). Reading Wikipedia to Answer Open-Domain Questions. \textit{ACL 2017}.
+
+\bibitem{fact_checking}
+Thorne, J., et al. (2018). FEVER: a Large-scale Dataset for Fact Extraction and VERification. \textit{NAACL 2018}.
+
+\bibitem{prompt_engineering}
+Liu, P., et al. (2023). Pre-train, Prompt, and Predict: A Systematic Survey of Prompting Methods in Natural Language Processing. \textit{ACM Computing Surveys}.
+
+\bibitem{few_shot_learning}
+Brown, T., et al. (2020). Language Models are Few-Shot Learners. \textit{NeurIPS 2020}.
+
+\bibitem{instruction_tuning}
+Wei, J., et al. (2022). Finetuned Language Models are Zero-Shot Learners. \textit{ICLR 2022}.
+
+\bibitem{rlhf}
+Ouyang, L., et al. (2022). Training language models to follow instructions with human feedback. \textit{NeurIPS 2022}.
+
+\bibitem{model_quantization}
+Dettmers, T., et al. (2023). QLoRA: Efficient Finetuning of Quantized LLMs. \textit{arXiv preprint arXiv:2305.14314}.
+
+\bibitem{inference_optimization}
+Kwon, W., et al. (2023). Efficient Memory Management for Large Language Model Serving with PagedAttention. \textit{SOSP 2023}.
+
+\bibitem{speculative_decoding}
+Leviathan, Y., et al. (2023). Fast Inference from Transformers via Speculative Decoding. \textit{ICML 2023}.
+
+\bibitem{distributed_inference}
+Pope, R., et al. (2023). Efficiently Scaling Transformer Inference. \textit{MLSys 2023}.
+
+\bibitem{cost_analysis}
+Patterson, D., et al. (2022). The Carbon Footprint of Machine Learning Training Will Plateau, Then Shrink. \textit{IEEE Computer}.
+
+\bibitem{tco_modeling}
+Anthony, L. F. W., et al. (2020). Carbontracker: Tracking and Predicting the Carbon Footprint of Training Deep Learning Models. \textit{ICML Workshop}.
+
+\bibitem{blockchain_oracles}
+Al-Breiki, H., et al. (2020). Trustworthy Blockchain Oracles: Review, Comparison, and Open Research Challenges. \textit{IEEE Access}.
+
+\bibitem{decentralized_systems}
+Narayanan, A., et al. (2016). \textit{Bitcoin and Cryptocurrency Technologies}. Princeton University Press.
+
+\bibitem{trusted_execution}
+Costan, V., \& Devadas, S. (2016). Intel SGX Explained. \textit{IACR Cryptology ePrint Archive}.
+
+\bibitem{federated_learning}
+McMahan, B., et al. (2017). Communication-Efficient Learning of Deep Networks from Decentralized Data. \textit{AISTATS 2017}.
+
+\bibitem{privacy_preserving}
+Dwork, C., \& Roth, A. (2014). The Algorithmic Foundations of Differential Privacy. \textit{Foundations and Trends in Theoretical Computer Science}.
+
+\bibitem{ai_ethics}
+Jobin, A., et al. (2019). The global landscape of AI ethics guidelines. \textit{Nature Machine Intelligence}.
+
+\bibitem{responsible_ai}
+Floridi, L., et al. (2018). AI4People—An Ethical Framework for a Good AI Society: Opportunities, Risks, Principles, and Recommendations. \textit{Minds and Machines}.
+
+\bibitem{ai_safety}
+Amodei, D., et al. (2016). Concrete Problems in AI Safety. \textit{arXiv preprint arXiv:1606.06565}.
+
+\bibitem{alignment_problem}
+Christian, B. (2020). \textit{The Alignment Problem: Machine Learning and Human Values}. W. W. Norton \& Company.
+
+\bibitem{open_source_ai}
+Solaiman, I. (2023). The Gradient of Generative AI Release: Methods and Considerations. \textit{arXiv preprint arXiv:2302.04844}.
+
+\end{thebibliography}
+
+% ============== DISCLAIMER PAGE ==============
+\newpage
+\thispagestyle{plain}
+\vspace*{2cm}
+
+\begin{center}
+\textbf{\Large Disclaimer}
+\end{center}
+
+\vspace{1cm}
+
+\noindent
+This research paper was independently compiled through comprehensive analysis of primary sources including academic preprints, official protocol documentation, GitHub repositories, and verified media publications. All technical claims have been cross-referenced against multiple authoritative sources to ensure accuracy and completeness.
+
+\vspace{0.5cm}
+
+\noindent
+This work references multiple implementations and frameworks maintained by Sentient AGI, including model fingerprinting code, agent frameworks, and secure enclave implementations. The author has no financial relationship with Sentient Foundation, any of its investors (including Founders Fund, Pantera Capital, or Framework Ventures), or any competing platforms discussed in this paper. No compensation was received for conducting this research or preparing this analysis.
+
+\vspace{0.5cm}
+
+\noindent
+Technical diagrams, mathematical formalizations, and comparative frameworks presented in this paper were developed specifically for educational purposes. While every effort has been made to accurately represent the underlying technologies, readers are encouraged to consult primary sources and official documentation for implementation details.
+
+\vspace{0.5cm}
+
+\noindent
+The field of AI-native cryptography is rapidly evolving. Information presented reflects the state of knowledge as of October 2025. Readers should verify current developments through official channels and recent publications. The author welcomes corrections, clarifications, and constructive feedback to improve the accuracy and completeness of this analysis.
+
+\vspace{0.5cm}
+
+\noindent
+This paper analyzes publicly available information including Academic preprints from IACR ePrint Archive and arXiv, Open-source code repositories on GitHub, Official protocol documentation and whitepapers, Verified investor announcements and media coverage, Technical benchmarks and performance evaluations.Where technical details remain unpublished or verification is limited, this paper clearly identifies such limitations and distinguishes between confirmed implementations, claimed capabilities, and theoretical projections.
+
+
+\vspace{1.5cm}
+
+\begin{center}
+\textit{This work is provided for educational and research purposes under principles of academic fair use and technological analysis.}
+\end{center}
+
+\end{document}
