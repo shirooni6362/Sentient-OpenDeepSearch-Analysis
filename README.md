@@ -10,6 +10,7 @@ A comprehensive technical analysis of an open-source search-augmented reasoning 
 - **Full Paper**: [Zenodo DOI: 10.5281/zenodo.17399217](https://doi.org/10.5281/zenodo.17399217)
 - **Project**: [github.com/sentient-agi/OpenDeepSearch](https://github.com/sentient-agi/OpenDeepSearch)
 - **Docs**: [docs.sentient.xyz](https://docs.sentient.xyz)
+- **My Sentient Contribution**: [Notion Link](https://bold-sturgeon-fff.notion.site/MY-WORK-ON-SENTIENT-283f155285b48090a70fc1f695d8288b?pvs=74)
 
 ## What This Paper Covers
 
@@ -78,6 +79,23 @@ This is a 130-page technical analysis examining:
   journal={arXiv preprint arXiv:2503.20201}
 }
 ```
+
+## APA Style
+
+```bibtex
+Oni, S. (2025). OML: A Comprehensive analysis of open, monetizable, and loyal AI paradigm - 
+Evaluating AI-native cryptography and blockchain integration for decentralized AI model distribution 
+[Technical report]. Independent Research.
+```
+
+## IEEE Style
+
+```bibtex
+S. Oni, "OML: A Comprehensive Analysis of Open, Monetizable, and Loyal AI Paradigm," 
+Independent Research, Tech. Rep., Oct. 2025.
+```
+
+
 
 ## License
 
