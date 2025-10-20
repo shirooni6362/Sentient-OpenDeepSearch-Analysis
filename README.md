@@ -7,7 +7,7 @@ A comprehensive technical analysis of an open-source search-augmented reasoning 
 
 ## Quick Links
 
-- **Full Paper**: [arXiv:2503.20201](https://arxiv.org/abs/2503.20201) | [Zenodo DOI: 10.5281/zenodo.17399217](https://doi.org/10.5281/zenodo.17399217)
+- **Full Paper**: [Zenodo DOI: 10.5281/zenodo.17399217](https://doi.org/10.5281/zenodo.17399217)
 - **Project**: [github.com/sentient-agi/OpenDeepSearch](https://github.com/sentient-agi/OpenDeepSearch)
 - **Docs**: [docs.sentient.xyz](https://docs.sentient.xyz)
 
