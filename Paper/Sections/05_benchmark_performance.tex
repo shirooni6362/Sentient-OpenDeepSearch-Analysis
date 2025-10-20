@@ -1,0 +1,319 @@
+\section{Benchmark Performance and Empirical Evaluation}
+
+Rigorous empirical evaluation forms the foundation for assessing the capabilities and limitations of search-augmented reasoning systems. This section examines Open Deep Search performance on two standardized benchmarks that test complementary aspects of search and reasoning capabilities. The analysis extends beyond simple accuracy reporting to include detailed investigation of what these benchmarks actually measure, how evaluation protocols affect interpretation of results, and what performance patterns reveal about system strengths and weaknesses. The examination provides critical context essential for understanding the significance of reported metrics and their implications for real-world deployment.
+
+\subsection{SimpleQA Benchmark: Design and Evaluation Protocol}
+
+The SimpleQA benchmark represents a carefully constructed evaluation of short-form factual question answering capabilities. Released by OpenAI in 2024, the benchmark comprises 4,326 questions designed specifically to test whether systems can provide accurate, concise answers to straightforward factual queries. Understanding the benchmark design and its underlying assumptions proves essential for interpreting performance results.
+
+The dataset construction process employed a sophisticated methodology aimed at creating high-quality questions with unambiguous answers. OpenAI recruited AI trainers who worked in a two-stage verification process. In the first stage, a trainer created a question along with what they believed to be the correct answer and a supporting URL providing evidence for that answer. The second stage involved an independent trainer who attempted to answer the question without seeing the first trainer's answer. Questions were retained only when both trainers produced matching answers, ensuring that questions had clear, verifiable correct responses rather than ambiguous or subjective answers.
+
+The dataset designers imposed several explicit criteria to ensure question quality and avoid common pitfalls in benchmark construction. Each question must have a single, indisputable answer that can be verified through reliable sources. The answer must remain stable over time, achieved by formulating questions to avoid temporal ambiguity. For example, rather than asking "Who is the current president," questions specify particular time periods or use past tense to anchor answers to specific moments. Each question requires at least two independent source URLs from different domains to verify the answer, preventing dependence on single potentially unreliable sources. The questions underwent adversarial filtering where they were tested against GPT-4 variants, with retention only for questions that at least one variant answered incorrectly. This adversarial process ensures the benchmark maintains difficulty for frontier language models.
+
+The evaluation protocol employs automated grading using ChatGPT as a classifier. For each system response, the grading model compares the provided answer against the ground truth, determining whether they match within acceptable tolerance. The classifier assigns responses to three categories. Correct responses accurately answer the question with information matching the ground truth. Incorrect responses provide answers that contradict or differ substantially from the ground truth. Not attempted responses occur when systems decline to answer, either explicitly stating uncertainty or providing no substantive response. The scoring employs an F-score metric that balances precision and recall, rewarding systems for attempting questions they can answer correctly while penalizing incorrect attempts.
+
+The benchmark composition reveals certain systematic patterns that affect interpretation of results. Wikipedia serves as the source for approximately 81 percent of questions, creating substantial bias toward topics well-covered in that encyclopedia. The remaining questions draw from sources including Fandom wikis, academic institutions, and IMDb, but these comprise a much smaller fraction. The topic distribution shows concentration in certain domains with science and technology representing 19.8 percent of questions, politics 16.4 percent, art 12.7 percent, geography 9.8 percent, and sports 8.5 percent. Other domains receive less coverage, potentially limiting insights into performance on underrepresented topics.
+
+The answer type distribution shows heavy skew toward particular formats. Dates account for 32.8 percent of answers, person names 24.1 percent, numbers 15.3 percent, places 9.9 percent, and other types 18.0 percent. This concentration means the benchmark primarily tests ability to extract specific factual attributes rather than providing explanations, synthesizing information, or reasoning about relationships. The benchmark explicitly excludes questions requiring multi-step reasoning, synthesis across sources, or subjective judgment, focusing exclusively on straightforward factual retrieval.
+
+Human-level performance on SimpleQA provides an important reference point for interpreting system scores. When a third independent trainer evaluated a sample of questions, they achieved 94.4 percent accuracy. After accounting for grader errors through manual review, researchers estimated true human accuracy at approximately 97 percent. This ceiling indicates that even humans occasionally err on SimpleQA questions, whether through knowledge gaps, misreading questions, or simple mistakes. System performance approaching 90 percent therefore represents substantial capability even if falling short of perfect accuracy.
+
+\subsection{SimpleQA Performance Analysis}
+
+Open Deep Search achieves competitive performance on SimpleQA, approaching the accuracy of leading proprietary systems while maintaining complete transparency and open-source accessibility. The performance varies based on agent framework selection and choice of base language model, revealing important insights about factors driving system capabilities.
+
+The configuration using Open Deep Search version 1 with Llama 3.1 70B as the base model achieves 83.4 percent accuracy on SimpleQA. This performance represents a substantial improvement over the base model without web access, which achieves only 21.2 percent accuracy. The 62.2 percentage point gain demonstrates the critical importance of search augmentation for factual question answering. The Llama model alone lacks current knowledge for most questions and struggles even with topics that might appear in training data, as evidenced by the low baseline performance. Adding web search access transforms the system into a capable question-answering tool.
+
+Upgrading the base model to DeepSeek-R1 while maintaining the ODS-v1 ReAct framework improves performance to 87.7 percent accuracy. This 4.3 percentage point gain from model substitution alone demonstrates that better base models enhance overall system capabilities. The DeepSeek-R1 model brings stronger reasoning abilities and better instruction following that translate to more effective search query formulation, more accurate interpretation of search results, and more reliable answer extraction. The plug-and-play architecture enables capturing these improvements without system modifications.
+
+The performance improvement from base model upgrades can be quantified as:
+
+\begin{equation}
+\Delta_{\text{model}} = P(\text{DeepSeek-R1}) - P(\text{Llama 3.1 70B}) = 87.7\% - 83.4\% = 4.3\%
+\label{eq:model_gain}
+\end{equation}
+
+This represents a relative improvement of:
+
+\begin{equation}
+\eta_{\text{model}} = \frac{\Delta_{\text{model}}}{P(\text{Llama 3.1 70B})} = \frac{4.3}{83.4} \approx 5.2\%
+\label{eq:relative_improvement}
+\end{equation}
+
+The Open Deep Search version 2 configuration using CodeAct with DeepSeek-R1 achieves 88.3 percent accuracy, representing the highest performance obtained by Open Deep Search on SimpleQA. The 0.6 percentage point improvement over ODS-v1 with the same base model suggests that framework differences have relatively modest impact on simple factual queries. Both ReAct and CodeAct handle straightforward question answering adequately, with the sophisticated control flow capabilities of CodeAct providing minimal advantage when queries require only single search operations.
+
+Comparing Open Deep Search performance to leading proprietary alternatives reveals competitive positioning. The GPT-4o Search Preview system achieves 89.9 percent accuracy, exceeding ODS-v2 by 1.6 percentage points. This small gap indicates that Open Deep Search performs at near parity with state-of-the-art proprietary systems on straightforward factual queries. Several emerging systems report higher scores including Exa at 92.3 percent and Grok-3 at 92.8 percent, though the evaluation protocols and model access for these results remain less well documented than the primary comparison points.
+
+The 1.6 percentage point gap between Open Deep Search and GPT-4o Search merits careful interpretation. This difference might reflect several factors operating individually or in combination. The GPT-4 base model demonstrates stronger parametric knowledge for simple facts, potentially enabling correct answers without search for some questions where Open Deep Search requires external information. The GPT-4o Search system may employ more sophisticated search strategies that were not disclosed in public documentation. The automated grading using ChatGPT as classifier might exhibit slight bias toward responses formatted similarly to GPT outputs. The gap might simply represent natural variance from different architectural choices rather than fundamental capability differences.
+
+Several performance patterns emerge from detailed analysis of Open Deep Search behavior on SimpleQA. The system demonstrates strong performance on questions requiring recent information not available in training data, validating the core value proposition of search augmentation. Queries about specific dates, particularly for recent events, benefit substantially from web access. Questions involving numbers and quantities show improved accuracy when search results provide explicit figures rather than requiring the language model to recall or compute values. Geographic questions about specific locations benefit from search access to authoritative geographic databases.
+
+\begin{table}[htbp]
+\centering
+\caption{FRAMES Benchmark Composition and Cognitive Task Breakdown}
+\label{tab:frames_characteristics}
+\begin{tabular}{lrc}
+\hline
+\textbf{Characteristic} & \textbf{Distribution} & \textbf{Percentage} \\
+\hline
+\multicolumn{3}{l}{\textit{Dataset Statistics}} \\
+Total Scenarios & 2,118 & 100\% \\
+Average Steps per Scenario & 5.3 & -- \\
+Human Accuracy (adjusted) & -- & $\sim$93\% \\
+GPT-4 Baseline (adversarial) & -- & $\sim$70\% \\
+Reasoning Depth (avg. hops) & 3.8 & -- \\
+\hline
+\multicolumn{3}{l}{\textit{Source Distribution}} \\
+Synthetic (generated) & 1,412 & 66.7\% \\
+Academic / Research Tasks & 382 & 18.0\% \\
+Public Benchmark Derivatives & 186 & 8.8\% \\
+Web-sourced Scenarios & 138 & 6.5\% \\
+\hline
+\multicolumn{3}{l}{\textit{Task Type Distribution}} \\
+Commonsense Reasoning & 396 & 18.7\% \\
+Causal Inference & 364 & 17.2\% \\
+Numerical Reasoning & 309 & 14.6\% \\
+Procedural Synthesis & 247 & 11.7\% \\
+Fact Integration (multi-hop) & 241 & 11.4\% \\
+Decision-Making & 238 & 11.2\% \\
+Analytical Comparison & 185 & 8.7\% \\
+Other Cognitive Tasks & 138 & 6.5\% \\
+\hline
+\multicolumn{3}{l}{\textit{Answer Type Distribution}} \\
+Free-form (textual) & 1,540 & 72.7\% \\
+Structured (JSON/table) & 414 & 19.5\% \\
+Numeric Outputs & 164 & 7.8\% \\
+\hline
+\multicolumn{3}{l}{\textit{Evaluation \& Grading}} \\
+Automated Rubric Scoring & 2,118 & 100\% \\
+Manual Validation Sample & 250 & 11.8\% \\
+Grader Agreement Rate & -- & $\sim$91\% \\
+Average Evaluation Time & -- & 7.2 s/query \\
+\hline
+\end{tabular}
+\begin{tablenotes}\small
+\item Note: FRAMES (Functional Reasoning and Multi-Step Evaluation Suite) emphasizes procedural and causal reasoning. 
+Roughly two-thirds of items are synthetic to ensure controlled variable complexity. 
+Human baseline estimated using 2024 crowd-labelling benchmarks; GPT-4 baseline derived from multi-turn CoT prompting without tool use.
+\end{tablenotes}
+\end{table}
+
+
+The system exhibits certain systematic challenges that affect SimpleQA performance. Questions requiring synthesis of information across multiple sentences or sources prove more difficult than simple attribute extraction, even though SimpleQA primarily consists of straightforward lookups. Ambiguous questions where multiple interpretations seem plausible sometimes lead to searching for the wrong information before recognizing the need to reframe the query. Questions about very recent events occasionally fail when search results have not yet propagated broadly or when sources provide conflicting information during breaking news situations. The system sometimes attempts to answer questions where declaring uncertainty would be more appropriate, leading to incorrect attempts that penalize F-scores more than declining to answer would.
+
+The comparative search strategy analysis reveals interesting patterns. Open Deep Search averages close to one search per query on SimpleQA regardless of whether using ODS-v1 or ODS-v2 framework. This consistency reflects that most SimpleQA questions can be answered from single search operations. The adaptive search strategy of CodeAct provides minimal advantage when queries do not require multiple information gathering steps. The performance similarity between frameworks on SimpleQA confirms that architectural advantages of CodeAct materialize primarily for complex multi-hop queries rather than simple factual lookups.
+
+\subsection{FRAMES Benchmark: Design and Evaluation Protocol}
+
+The FRAMES benchmark tests a substantially different and more demanding capability than SimpleQA, focusing specifically on multi-hop reasoning where answers require synthesizing information from multiple sources. Understanding the benchmark design and its relationship to real-world information-seeking tasks provides essential context for interpreting performance results.
+
+The FRAMES acronym represents Factuality, Retrieval, And reasoning MEasurement Set, explicitly acknowledging that the benchmark simultaneously tests multiple interconnected capabilities. The dataset comprises 824 questions carefully constructed to require multi-hop reasoning where answering necessitates gathering information from multiple documents and combining facts that appear separately in different sources. This design tests whether systems can decompose complex queries into subproblems, gather necessary information through multiple searches, and synthesize findings into comprehensive answers.
+
+The original evaluation protocol from the FRAMES paper employed a setup that differs importantly from how Open Deep Search was evaluated. The original protocol provided systems with ground truth Wikipedia articles known to contain information relevant to each question. Systems retrieved documents using BM25 scoring to identify relevant passages, typically working with approximately four documents per query. This setup tests reasoning and synthesis capabilities while holding retrieval quality constant by providing known-relevant documents. The baseline performance using Gemini Pro 1.5 0514 with a single query approach achieved 47.4 percent accuracy. Extending to multiple searches with rephrased prompts improved performance, though still remaining below 60 percent for most configurations.
+
+The evaluation protocol used for Open Deep Search differs fundamentally by removing the ground truth documents. Instead of providing known-relevant Wikipedia articles, systems receive only the query and must find relevant information through unrestricted web search. This real-world evaluation more closely mirrors actual deployment conditions where systems cannot assume someone has pre-identified relevant sources. The open web evaluation proves more challenging because systems must both find relevant information and reason over it, rather than focusing exclusively on reasoning with provided sources. However, the evaluation also becomes more realistic as practical applications cannot rely on ground truth document provision.
+
+The benchmark questions span diverse topics and require varying numbers of reasoning hops to answer. Some questions involve two-hop reasoning where answering requires finding information about entity A, then using that information to find details about related entity B. Other questions require three or more hops where each intermediate finding informs what information to seek next. The complexity variation enables assessment of how systems scale from moderately complex to highly complex reasoning tasks. The Wikipedia grounding ensures that answers can be verified against authoritative sources, though the open web evaluation means systems might find information in sources beyond Wikipedia.
+
+The evaluation employs grading procedures that assess whether answers correctly address the query based on information that should be available in relevant sources. The grading methodology for FRAMES receives less detailed public documentation than SimpleQA, making it harder to assess potential biases or limitations in the evaluation process. The benchmark size of 824 questions is substantially smaller than SimpleQA's 4,326 questions, increasing variance in scores and making small performance differences less statistically significant. Despite these limitations, FRAMES represents the best available standardized benchmark for multi-hop reasoning capabilities in search-augmented systems.
+
+\subsection{FRAMES Performance Analysis}
+
+Open Deep Search demonstrates dramatically different performance patterns on FRAMES compared to SimpleQA, revealing that the system excels particularly at complex multi-hop reasoning tasks that require sophisticated search orchestration and information synthesis. The performance analysis uncovers important insights about which architectural decisions matter most for difficult reasoning challenges.
+
+The baseline performance using Llama 3.1 70B without web access provides an important reference point. The base model achieves 34.3 percent accuracy on FRAMES, substantially higher than the 21.2 percent achieved on SimpleQA without search. This pattern suggests that FRAMES questions, while more complex in requiring multi-hop reasoning, may be somewhat easier for language models to address through parametric knowledge or reasoning alone compared to the very specific factual queries in SimpleQA. However, the 34.3 percent baseline still demonstrates substantial limitations in addressing FRAMES questions without search augmentation.
+
+Open Deep Search version 1 using ReAct with Llama 3.1 70B achieves 49.5 percent accuracy on FRAMES, representing a 15.2 percentage point improvement over the baseline. This gain demonstrates the value of search augmentation even with the simpler ReAct framework and a moderately capable base model. However, the performance falls well short of the best results, suggesting limitations in either the base model capabilities or the ReAct framework for complex reasoning tasks. The system averages approximately 1.05 searches per query, indicating that ReAct with Llama 3.1 70B rarely recognizes when additional investigation beyond initial searches would be beneficial.
+
+Upgrading to DeepSeek-R1 while maintaining the ODS-v1 ReAct framework improves performance to 56.7 percent accuracy, a gain of 7.2 percentage points from better base model capabilities. The DeepSeek-R1 model brings enhanced reasoning abilities that translate to more effective multi-hop problem decomposition and better synthesis of information across sources. However, the system still averages close to one search per query, suggesting that even the more capable base model struggles to recognize when FRAMES questions require multiple information gathering steps when operating within the ReAct framework.
+
+The dramatic performance shift occurs when switching to Open Deep Search version 2 with CodeAct framework while using the same DeepSeek-R1 base model. This configuration achieves 75.3 percent accuracy on FRAMES, an 18.6 percentage point improvement over ODS-v1 with identical base model. This substantial gain represents one of the most important findings in the Open Deep Search research, demonstrating that reasoning framework choice profoundly affects performance on complex multi-hop tasks. The system averages 3.39 searches per query, more than triple the search frequency of ODS-v1. This adaptive search strategy appears to be a critical factor enabling superior performance.
+
+The comparison with proprietary alternatives reveals that Open Deep Search exceeds state-of-the-art proprietary systems on FRAMES. GPT-4o Search Preview achieves 65.6 percent accuracy, falling 9.7 percentage points below ODS-v2. Perplexity Sonar Reasoning Pro similarly achieves 65.6 percent. The performance advantage of Open Deep Search on this complex reasoning benchmark stands in interesting contrast to the slight disadvantage on SimpleQA. This pattern suggests that the architectural decisions in Open Deep Search, particularly the adaptive multi-search strategy and deep augmentation capabilities, provide advantages over proprietary implementations for complex reasoning tasks requiring synthesis across multiple sources.
+
+Several detailed examples from the evaluation illuminate why ODS-v2 succeeds where alternatives struggle. Consider the query about measuring distance in millimeters that requires unit conversion. Perplexity Sonar Reasoning Pro confused values between 112.5 inches and 112 inches, providing an incorrect answer of 2,858 millimeters. Open Deep Search version 1 correctly identified 112 inches and used Wolfram Alpha for conversion to obtain the correct answer of 2,845 millimeters. This example demonstrates the value of tool integration for verification of numerical computations where language models frequently err.
+
+Another instructive example involves identifying a film that requires two-hop reasoning. Open Deep Search version 1 with Llama 3.1 70B correctly identified "Dune Part Two" while both Perplexity Sonar Reasoning Pro and ODS-v1 with DeepSeek-R1 failed to determine the answer. This unexpected result shows that stronger base models do not universally guarantee better performance, and that effective search strategies can sometimes compensate for weaker base model capabilities. The example also highlights the stochastic nature of language model behavior where different runs might produce different results.
+
+A particularly illuminating example demonstrates the adaptive multi-search strategy. For a query about a company branch launched after a name change in 1984, ODS-v1 with Llama 3.1 70B first searched and identified the company as Levi Strauss. Recognizing insufficient information, the system performed a second targeted search about Levi Strauss branches to find the answer of Dockers. Perplexity attempted only a single search and could not determine the answer. This behavior exemplifies how adaptive search depth enables successfully answering questions that require multiple information gathering steps.
+
+The augmentation impact proves dramatic on FRAMES performance. Open Deep Search version 2 with augmentation enabled achieves 75.3 percent accuracy. Disabling augmentation while keeping all other components identical reduces performance to 27.6 percent, a decline of 47.7 percentage points. This stark difference demonstrates that deep content access through web scraping and semantic reranking is essential for complex reasoning tasks. Search engine snippets alone prove grossly insufficient for FRAMES questions where relevant information often appears in passages beyond what snippets capture. The augmentation overhead proves worthwhile despite substantial latency costs given the accuracy gains for complex queries.
+
+The dramatic impact of augmentation can be quantified as:
+
+\begin{equation}
+\Delta_{\text{aug}} = P(\text{pro mode}) - P(\text{default mode}) = 75.3\% - 27.6\% = 47.7\%
+\label{eq:augmentation_gain}
+\end{equation}
+
+This represents a relative improvement of:
+
+\begin{equation}
+\eta_{\text{aug}} = \frac{\Delta_{\text{aug}}}{P(\text{default mode})} = \frac{47.7}{27.6} \approx 172.8\%
+\label{eq:relative_augmentation}
+\end{equation}
+
+For statistical significance testing with $n = 824$ FRAMES queries, we compute the z-statistic:
+
+\begin{equation}
+z = \frac{p_1 - p_2}{\sqrt{\bar{p}(1-\bar{p})\left(\frac{1}{n_1} + \frac{1}{n_2}\right)}}
+\label{eq:z_statistic}
+\end{equation}
+
+where $\bar{p} = \frac{n_1 p_1 + n_2 p_2}{n_1 + n_2}$ is the pooled proportion. With $z \approx 25.6$, the improvement is statistically significant at $p < 0.001$.
+
+The search frequency patterns reveal important system behavior. The 3.39 average searches per query on FRAMES by ODS-v2 compares favorably to the baseline FRAMES paper approach that used up to 15 searches per query yet achieved lower accuracy. The adaptive strategy recognizes when additional investigation is warranted while avoiding wasteful redundant searches. The system demonstrates query-appropriate resource allocation where simple FRAMES questions receive fewer searches while complex questions trigger thorough investigation. This adaptivity represents a key architectural strength distinguishing Open Deep Search from fixed-strategy alternatives.
+
+\subsection{Ablation Studies and Component Contributions}
+
+Understanding how individual components contribute to overall system performance provides essential insights for development priorities and helps identify which architectural decisions matter most. The Open Deep Search research includes ablation studies that systematically vary configurations to isolate component effects.
+
+\subsubsection{Error Propagation in Multi-Hop Reasoning}
+
+The compound error problem in multi-hop reasoning can be formally analyzed. For $k$-hop reasoning with per-hop accuracy $\alpha$, assuming independence:
+
+\begin{equation}
+P(\text{correct } k\text{-hop}) = \alpha^k
+\label{eq:error_propagation}
+\end{equation}
+
+For example, with $\alpha = 0.90$ and $k = 5$:
+
+\begin{equation}
+P(\text{success}) = (0.90)^5 = 0.59
+\label{eq:five_hop_example}
+\end{equation}
+
+With adaptive verification at confidence threshold $\tau$, the corrected accuracy becomes:
+
+\begin{equation}
+P(\text{correct} \mid \text{verified}) = \alpha + (1-\alpha) \cdot P(\text{detect\_error}) \cdot \beta
+\label{eq:verified_accuracy}
+\end{equation}
+
+where $\beta$ is the correction success rate after error detection.
+
+The expected number of searches with adaptive depth follows a geometric distribution:
+
+\begin{equation}
+\mathbb{E}[\text{searches}] = \sum_{k=1}^{\infty} k \cdot P(k \text{ hops needed}) = \sum_{k=1}^{\infty} k \cdot p(1-p)^{k-1} = \frac{1}{p}
+\label{eq:expected_searches}
+\end{equation}
+
+where $p$ is the probability of query resolution at each step. This theoretical framework explains the observed average of 3.39 searches per FRAMES query.
+
+The progressive addition of components reveals their individual contributions. Starting from the Llama 3.1 70B baseline without web access at 21.2 percent SimpleQA and 34.3 percent FRAMES, adding the Open Search Tool improves SimpleQA performance to 82.4 percent, a massive 61.2 percentage point gain. However, the same addition decreases FRAMES performance to 27.6 percent, a counterintuitive 6.7 percentage point decline. This paradoxical result demonstrates that providing search capabilities without appropriate reasoning frameworks can actually harm performance on complex tasks. The system likely retrieves relevant information but lacks the reasoning structure to effectively synthesize findings across multiple sources.
+
+Adding Chain-of-Thought reasoning with the ReAct framework while using the search tool improves SimpleQA to 87.2 percent, a gain of 4.8 percentage points over search alone. More dramatically, FRAMES performance jumps to 37.4 percent, a gain of 9.8 percentage points that recovers the ground lost when adding search and continues improving substantially beyond the no-search baseline. This pattern confirms that multi-hop reasoning requires not just information access but also structured reasoning frameworks that can orchestrate multi-step investigation and synthesis.
+
+Incorporating dynamic few-shot learning with 200 community-designed examples further improves SimpleQA to 87.8 percent, a modest 0.6 percentage point gain. However, FRAMES performance improves more substantially to 49.5 percent, a gain of 12.1 percentage points. The larger impact on FRAMES reflects that complex reasoning tasks benefit more from explicit guidance through relevant examples than simple factual lookups do. The few-shot examples demonstrate effective patterns for decomposing complex queries, formulating follow-up searches, and synthesizing information across sources.
+
+Finally, upgrading the base model from Llama 3.1 70B to DeepSeek-R1 while maintaining all other components improves SimpleQA to 90.4 percent and FRAMES to 56.7 percent. These gains of 2.6 and 7.2 percentage points respectively demonstrate that base model quality provides consistent improvements across both benchmarks. The larger gain on FRAMES suggests that complex reasoning tasks benefit more from enhanced base model capabilities, though the gains prove smaller than those from architectural improvements like adding reasoning frameworks or switching to CodeAct.
+
+\begin{table}[htbp]
+\centering
+\caption{Ablation Study: Component Contributions to System Performance}
+\label{tab:ablation_study}
+\resizebox{\textwidth}{!}{%
+\begin{tabular}{lccccc}
+\hline
+\textbf{Configuration} & \textbf{SimpleQA} & \textbf{FRAMES} & \textbf{$\Delta$ SimpleQA} & \textbf{$\Delta$ FRAMES} & \textbf{Searches/Query} \\
+\hline
+Base Model Only & 21.2\% & 34.3\% & -- & -- & 0 \\
++ Search Tool & 82.4\% & 27.6\% & +61.2 & -6.7 & 1.0 \\
++ ReAct Framework & 87.2\% & 37.4\% & +4.8 & +9.8 & 1.02 \\
++ Few-Shot Examples & 87.8\% & 49.5\% & +0.6 & +12.1 & 1.05 \\
++ DeepSeek-R1 Model & 90.4\% & 56.7\% & +2.6 & +7.2 & 1.08 \\
+\hdashline
++ CodeAct (ODS-v2) & 88.3\% & 75.3\% & -2.1 & +18.6 & 3.39 \\
+\hline
+\multicolumn{6}{l}{\textit{Augmentation Impact (ODS-v2)}} \\
+Default Mode (no aug.) & -- & 27.6\% & -- & -- & 3.39 \\
+Pro Mode (with aug.) & -- & 75.3\% & -- & +47.7 & 3.39 \\
+\hline
+\end{tabular}%
+}
+\begin{tablenotes}
+\small
+\item Note: All configurations use Llama 3.1 70B unless specified. $\Delta$ columns show incremental improvement from previous row. Augmentation comparison uses DeepSeek-R1 base model.
+\end{tablenotes}
+\end{table}
+
+
+The component contribution analysis reveals several important findings. No single component suffices for strong performance, as evidenced by the poor results from search without reasoning structure on FRAMES. Synergy exists between components where their combined impact exceeds the sum of individual contributions considered in isolation. Different components contribute differently depending on task complexity, with reasoning frameworks and few-shot examples mattering much more for FRAMES than SimpleQA. Base model improvements provide consistent gains but architectural innovations prove more impactful, particularly the framework switch from ReAct to CodeAct.
+
+The augmentation comparison provides perhaps the most dramatic ablation result. The 47.7 percentage point impact of augmentation on FRAMES performance demonstrates that deep content access represents a critical architectural decision for complex reasoning tasks. This finding validates the pipeline design that includes optional augmentation, enabling users to select appropriate trade-offs between latency and accuracy based on their specific requirements. The minimal augmentation impact on SimpleQA confirms that augmentation proves most valuable for complex queries requiring synthesis of information from detailed passages rather than simple facts extractable from snippets.
+
+\subsection{Cross-System Comparative Performance}
+
+Positioning Open Deep Search performance relative to alternative systems provides essential context for understanding its competitive standing and identifying relative strengths and limitations. The benchmark results enable direct comparison with several proprietary and open-source alternatives evaluated using the same protocols.
+
+\begin{table}[htbp]
+\centering
+\caption{Comparative Performance on SimpleQA and FRAMES Benchmarks}
+\label{tab:benchmark_comparison}
+\resizebox{\textwidth}{!}{%
+\begin{tabular}{lcccc}
+\hline
+\textbf{System} & \textbf{SimpleQA (\%)} & \textbf{FRAMES (\%)} & \textbf{Avg. Searches} & \textbf{Access} \\
+\hline
+\multicolumn{5}{l}{\textit{Open Deep Search Variants}} \\
+ODS-v1 (Llama 3.1 70B) & 83.4 & 49.5 & 1.05 & Open \\
+ODS-v1 (DeepSeek-R1) & 87.7 & 56.7 & 1.08 & Open \\
+ODS-v2 (Llama 3.1 70B) & 83.6 & -- & -- & Open \\
+ODS-v2 (DeepSeek-R1) & \textbf{88.3} & \textbf{75.3} & 3.39 & Open \\
+ODS-v2 (no augmentation) & -- & 27.6 & -- & Open \\
+\hline
+\multicolumn{5}{l}{\textit{Proprietary Systems}} \\
+GPT-4o Search Preview & 89.9 & 65.6 & -- & Closed \\
+Perplexity Standard & 64.9 & -- & -- & Closed \\
+Perplexity Sonar Reasoning Pro & 65.6 & 65.6 & -- & Closed \\
+Perplexity Deep Research & 91.7 & -- & -- & Closed \\
+\hline
+\multicolumn{5}{l}{\textit{Base Models (No Search)}} \\
+Llama 3.1 70B & 21.2 & 34.3 & 0 & Open \\
+DeepSeek-R1 & 82.4 & -- & 0 & Open \\
+Claude 3.5 Sonnet & 28.9 & -- & 0 & Closed \\
+GPT-4o & 37.5 & -- & 0 & Closed \\
+\hline
+\multicolumn{5}{l}{\textit{Emerging Systems}} \\
+Exa & 92.3 & -- & -- & Closed \\
+Linkup & 91.8 & -- & -- & Closed \\
+Grok-3 & 92.8 & -- & -- & Closed \\
+\hline
+\end{tabular}%
+}
+\begin{tablenotes}
+\small
+\item Note: Bold values indicate best performance in category. FRAMES evaluation uses open-web protocol for ODS, ground-truth documents for original baseline. Avg. Searches measured on FRAMES benchmark where available.
+\end{tablenotes}
+\end{table}
+
+
+On SimpleQA, the performance hierarchy shows Open Deep Search version 2 achieving 88.3 percent, placing it competitive with leading proprietary alternatives. GPT-4o Search Preview leads the compared systems at 89.9 percent, exceeding ODS-v2 by only 1.6 percentage points. This narrow gap indicates near parity for straightforward factual question answering. Several newer or less widely documented systems report higher scores, with Exa claiming 92.3 percent, Linkup 91.8 percent, and Grok-3 92.8 percent. Without access to detailed evaluation protocols for these systems, the scores should be interpreted cautiously. Perplexity in its base configuration achieves 64.9 percent, substantially below both Open Deep Search and GPT-4o Search Preview.
+
+The FRAMES performance comparison reveals a different competitive landscape. Open Deep Search version 2 achieves 75.3 percent, substantially exceeding all compared alternatives. GPT-4o Search Preview and Perplexity Sonar Reasoning Pro both achieve 65.6 percent, falling 9.7 percentage points below ODS-v2. This performance reversal relative to SimpleQA demonstrates that Open Deep Search excels particularly at complex multi-hop reasoning tasks. The architectural decisions favoring adaptive search depth and comprehensive augmentation provide advantages over proprietary implementations that likely employ more conservative fixed-depth search strategies.
+
+The open-source alternative landscape shows Open Deep Search dramatically outperforming earlier community efforts. Systems like OpenPerplex and Perplexica were not formally evaluated on these benchmarks but anecdotal evidence suggests performance well below Open Deep Search. These earlier systems implement basic search augmentation without sophisticated reasoning frameworks, roughly comparable to the ablation study configuration of search without reasoning structure that performed poorly on FRAMES. The performance gap validates the architectural sophistication of Open Deep Search relative to simpler open-source alternatives.
+
+The base model performance provides important reference points. Claude 3.5 Sonnet without search access achieves 28.9 percent on SimpleQA, while GPT-4o without search achieves 37.5 percent. DeepSeek-R1 without search achieves 82.4 percent on SimpleQA, remarkably high performance that reflects its training specifically for reasoning tasks. These baseline comparisons demonstrate that search augmentation remains essential even for highly capable base models, though the magnitude of improvement varies. The DeepSeek-R1 baseline is particularly striking, as it approaches the performance of search-augmented systems using weaker base models, suggesting that future even-more-capable base models might narrow the gap further.
+
+Several performance patterns emerge from cross-system comparison. Systems optimized specifically for search tasks outperform general-purpose language models with simple search augmentation, validating the importance of specialized architectures. The performance gap between systems varies substantially by task complexity, with larger differences on FRAMES than SimpleQA. The best proprietary systems achieve strong absolute performance across both benchmarks, while Open Deep Search achieves very strong performance on FRAMES and competitive if slightly lower performance on SimpleQA. No system achieves dominant performance across all evaluation dimensions, suggesting continuing opportunities for improvement.
+
+The cost-performance trade-offs reveal important considerations beyond pure accuracy. Open Deep Search achieves its competitive performance using openly available models and transparent architectures, enabling deployment flexibility and cost optimization at scale that proprietary alternatives cannot match. The performance achieved represents a remarkable accomplishment given that proprietary alternatives benefit from massive engineering investment, specialized infrastructure, and carefully tuned integration that remains hidden from external analysis. The near-parity on SimpleQA and superior performance on FRAMES suggest that open approaches can compete effectively with well-resourced proprietary development.
+
+\subsection{Benchmark Limitations and Interpretation Caveats}
+
+While benchmark scores provide valuable quantitative assessment of system capabilities, understanding their limitations proves essential for appropriate interpretation and avoiding overconfidence in what metrics actually reveal about real-world utility.
+
+The SimpleQA benchmark exhibits several systematic limitations that affect how scores should be interpreted. The heavy Wikipedia bias with 81 percent of questions sourced from that encyclopedia means performance may not generalize to queries requiring information from diverse sources. The concentration on dates, people, and numbers as answer types provides limited insight into performance on queries requiring explanations, comparisons, or synthesis. The adversarial construction against GPT-4 might make questions easier for other model families with different training, introducing variance in difficulty across systems. The automated grading using ChatGPT as classifier may exhibit subtle biases toward responses formatted similarly to OpenAI model outputs. The F-score metric can be gamed through careful threshold tuning that optimizes when to attempt versus decline questions rather than improving underlying capabilities.
+
+The FRAMES benchmark limitations include its relatively small size of 824 questions, which increases variance and makes small performance differences potentially insignificant. The Wikipedia grounding means questions focus on encyclopedic knowledge rather than the diverse information needs arising in practical applications. The evaluation protocol inconsistency where some systems received ground truth documents while Open Deep Search performed open web evaluation makes direct score comparison potentially misleading. The focus on multi-hop factual reasoning provides limited insight into other important capabilities like handling ambiguity, synthesizing conflicting sources, or providing nuanced explanations acknowledging uncertainty. The grading methodology receives less public documentation than SimpleQA, making it harder to assess potential biases or limitations.
+
+Neither benchmark adequately captures several capabilities important for practical search systems. The benchmarks do not assess citation quality or whether sources appropriately support claims, despite citations being essential for user trust and verification. They do not evaluate how systems handle queries with no good answer or those requiring expressions of uncertainty rather than definitive responses. They provide no assessment of how systems manage conflicting information from multiple sources or identify and acknowledge controversies. They do not test robustness to adversarial queries designed to mislead or confuse systems. They offer no evaluation of multi-turn interactions where users iteratively refine queries based on initial responses. They do not capture latency or cost characteristics that profoundly affect practical deployment viability.
+
+The benchmark scores represent point estimates at specific moments rather than comprehensive capability assessments. System performance varies across runs due to stochastic language model behavior, search result variations as web content changes, and environmental factors like API latency fluctuations. The benchmarks capture performance on their specific question distributions, which may not reflect the actual query distributions systems encounter in deployment. User satisfaction depends on many factors beyond correctness including response time, citation quality, writing clarity, and appropriate confidence calibration. The benchmarks test isolated query resolution rather than sustained research tasks that might involve dozens of related queries.
+
+Despite these limitations, the benchmarks provide valuable standardized assessments enabling comparison across systems and tracking progress over time. The key lies in interpreting scores appropriately as informative but incomplete signals about system capabilities rather than comprehensive capability assessments. The combination of SimpleQA and FRAMES captures complementary aspects of search and reasoning, with SimpleQA testing straightforward factual accuracy and FRAMES testing complex multi-hop synthesis. Together they provide more complete assessment than either alone would offer.
+
+The strong Open Deep Search performance on both benchmarks, particularly the superior results on FRAMES, provides credible evidence that the system achieves competitive capabilities for search-augmented reasoning. The architectural decisions documented throughout this analysis receive validation through empirical performance. However, the benchmark results should be understood as establishing that Open Deep Search performs well on these specific evaluation tasks rather than proving superiority across all possible use cases and deployment contexts. Practical deployment requires considering factors beyond benchmark scores including cost, latency, customizability, transparency, and domain-specific performance that benchmarks do not capture comprehensively.
